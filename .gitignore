@@ -1,0 +1,25 @@
+node_modules/
+.env
+.claude/
+credentials/
+*.log
+.DS_Store
+
+# Debug and test files
+debug_*.js
+test-*.js
+test_*.js
+verify_*.js
+list_models.js
+reindex.js
+ps.txt
+*.txt
+!README.txt
+
+# Temp data
+data/conversation_memory.json
+data/conversation_state.json
+data/kb_index.json
+project_codebase.json
+system_blueprint.json
+scripts/backfill_sheets.js

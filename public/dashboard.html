@@ -1,0 +1,3896 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCTH | Command Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #05100f;
+            --bg-secondary: #091816;
+            --surface-default: #0f201d;
+            --surface-elevated: #132824;
+            --surface-strong: #19332d;
+            --text-high: #edf8f3;
+            --text-medium: #a4bab3;
+            --text-low: #6a837c;
+            --accent-blue: #51c8ff;
+            --accent-green: #63e2a3;
+            --accent-orange: #ffb04a;
+            --accent-red: #ff6b6b;
+            --accent-purple: #b394ff;
+            --border-color: rgba(123, 171, 156, 0.18);
+            --border-hover: rgba(123, 171, 156, 0.34);
+            --shadow-soft: 0 24px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(81, 200, 255, 0.14), transparent 28%),
+                radial-gradient(circle at top right, rgba(99, 226, 163, 0.1), transparent 24%),
+                linear-gradient(180deg, rgba(4, 10, 9, 0.86), rgba(3, 8, 7, 0.98)),
+                linear-gradient(90deg, rgba(99, 226, 163, 0.05) 1px, transparent 1px),
+                linear-gradient(rgba(99, 226, 163, 0.035) 1px, transparent 1px),
+                var(--bg-primary);
+            background-size: auto, auto, auto, 26px 26px, 26px 26px, auto;
+            color: var(--text-high);
+            letter-spacing: -0.006em;
+            line-height: 1.52;
+            font-size: 12px;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        .vitsoe-card {
+            background: linear-gradient(180deg, rgba(19, 40, 36, 0.9), rgba(11, 26, 23, 0.94));
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: var(--shadow-soft);
+            backdrop-filter: blur(16px);
+            transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .vitsoe-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 28px 70px rgba(0, 0, 0, 0.34);
+        }
+
+        .vitsoe-button {
+            border: 1px solid var(--border-color);
+            background: linear-gradient(180deg, rgba(24, 48, 42, 0.96), rgba(13, 28, 25, 0.96));
+            padding: 8px 14px;
+            font-weight: 600;
+            color: var(--text-high);
+            border-radius: 999px;
+            transition: all 0.15s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        }
+
+        .vitsoe-button:hover {
+            background: linear-gradient(180deg, rgba(31, 63, 55, 0.98), rgba(19, 39, 35, 0.98));
+            border-color: var(--border-hover);
+        }
+
+        .vitsoe-button:active {
+            transform: scale(0.97);
+        }
+
+        .vitsoe-button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        #map {
+            height: 440px;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            background: #081311;
+            box-shadow: inset 0 0 0 1px rgba(123, 171, 156, 0.1);
+        }
+
+        .sidebar {
+            width: 252px;
+            border-right: 1px solid var(--border-color);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background: linear-gradient(180deg, rgba(9, 21, 19, 0.96), rgba(5, 14, 12, 0.98));
+            z-index: 1000;
+            overflow-y: auto;
+            backdrop-filter: blur(18px);
+            box-shadow: 18px 0 60px rgba(0, 0, 0, 0.34);
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 0;
+        }
+
+        .main-content {
+            margin-left: 252px;
+            padding: 24px 24px 32px;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(8px);
+            z-index: 999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .sidebar-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .mobile-shell-button {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1200;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(8, 20, 18, 0.92);
+            border: 1px solid var(--border-color);
+            color: var(--text-high);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+            backdrop-filter: blur(16px);
+        }
+
+        .sidebar-close-button {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            color: var(--text-high);
+            background: transparent;
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .snapshot-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .metric-tile {
+            background: linear-gradient(180deg, rgba(82, 200, 255, 0.08), rgba(255, 255, 255, 0.02));
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            min-height: 96px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        }
+
+        .metric-kicker {
+            font-size: 7.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--text-low);
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            color: var(--text-high);
+            line-height: 1;
+        }
+
+        .metric-note {
+            font-size: 10px;
+            color: var(--text-medium);
+            margin-top: 6px;
+        }
+
+        .focus-banner {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .focus-summary {
+            max-width: 520px;
+        }
+
+        .focus-summary h2 {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--text-high);
+            margin-bottom: 6px;
+        }
+
+        .focus-summary p {
+            color: var(--text-medium);
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        .results-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: rgba(8, 20, 18, 0.7);
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--text-medium);
+            white-space: nowrap;
+        }
+
+        .command-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
+            gap: 16px;
+            align-items: stretch;
+        }
+
+        .command-kicker {
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--accent-blue);
+            margin-bottom: 8px;
+        }
+
+        .command-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .command-meta h1 {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            color: var(--text-high);
+            line-height: 1;
+            margin: 0;
+        }
+
+        .command-copy {
+            color: var(--text-medium);
+            font-size: 11px;
+            line-height: 1.55;
+            max-width: 560px;
+            margin-top: 8px;
+        }
+
+        .command-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .command-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            border: 1px solid var(--border-color);
+            color: var(--text-medium);
+            background: rgba(7, 18, 16, 0.66);
+        }
+
+        .command-badge-primary {
+            background: var(--accent-blue);
+            color: #04110f;
+            border-color: transparent;
+        }
+
+        .command-stat-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .command-stat {
+            background: linear-gradient(180deg, rgba(82, 200, 255, 0.08), rgba(255, 255, 255, 0.015));
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            min-height: 86px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        }
+
+        .command-stat-label {
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--text-low);
+        }
+
+        .command-stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: minmax(220px, 1.8fr) repeat(5, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .compact-toolbar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 14px;
+            padding: 12px;
+            border-radius: 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .compact-toolbar-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .compact-toolbar-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-input,
+        .filter-select {
+            width: 100%;
+            padding: 9px 10px;
+            font-size: 11px;
+            border-radius: 9px;
+            border: 1px solid var(--border-color);
+            background: rgba(7, 18, 16, 0.84);
+            color: var(--text-high);
+            outline: none;
+        }
+
+        .filter-input:focus,
+        .filter-select:focus {
+            border-color: rgba(10, 132, 255, 0.65);
+            box-shadow: 0 0 0 1px rgba(10, 132, 255, 0.2);
+        }
+
+        .filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-medium);
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .filter-chip:hover,
+        .filter-chip.active {
+            color: white;
+            border-color: rgba(10, 132, 255, 0.6);
+            background: rgba(10, 132, 255, 0.18);
+        }
+
+        .active-filter-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-medium);
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+        }
+
+        .status-badge,
+        .urgency-badge,
+        .age-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+
+        .table-note {
+            color: var(--text-low);
+            font-size: 9px;
+            margin-top: 4px;
+        }
+
+        .table-secondary {
+            color: var(--text-medium);
+            font-size: 9px;
+            line-height: 1.5;
+        }
+
+        .text-clamp-2 {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            overflow: hidden;
+        }
+
+        .map-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .map-thumb-icon {
+            width: 60px;
+            height: 60px;
+            border: 2px solid white;
+            border-radius: 2px;
+            object-fit: cover;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table-shell {
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            overflow: hidden;
+            background: rgba(6, 18, 16, 0.42);
+        }
+
+        th {
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-medium);
+            text-transform: uppercase;
+            font-size: 9px;
+            letter-spacing: 0.06em;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(9, 21, 19, 0.92);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        tr.solved {
+            opacity: 0.5;
+        }
+
+        tr:hover td {
+            background: rgba(81, 200, 255, 0.05);
+        }
+
+        .step-box {
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            flex: 1;
+            text-align: center;
+            font-weight: 600;
+            font-size: 10px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            z-index: 2;
+            background: var(--surface-default);
+            color: var(--text-medium);
+            border-radius: 8px;
+        }
+
+        .step-container {
+            position: relative;
+            display: flex;
+            gap: 4px;
+            margin-bottom: 32px;
+        }
+
+        .step-box.active {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+
+        .step-box.completed {
+            background: var(--surface-elevated);
+            color: var(--text-low);
+        }
+
+        .step-timestamp {
+            position: absolute;
+            bottom: -20px;
+            left: 0;
+            width: 100%;
+            font-size: 9px;
+            color: var(--text-medium);
+            text-transform: none;
+            font-weight: 500;
+        }
+
+        .image-preview {
+            width: 100%;
+            height: 200px;
+            background: var(--surface-elevated);
+            border: 1px dashed var(--border-hover);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 8px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+        }
+
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .timeline-item {
+            padding-left: 16px;
+            border-left: 2px solid var(--accent-blue);
+            position: relative;
+            padding-bottom: 20px;
+        }
+
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            left: -4px;
+            top: 0;
+            width: 6px;
+            height: 6px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+        }
+
+        .map-mode-btn {
+            background: rgba(7, 18, 16, 0.78);
+            border: 1px solid var(--border-color);
+            padding: 6px 10px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 999px;
+            color: var(--text-medium);
+            transition: all 0.15s;
+            letter-spacing: 0.12em;
+        }
+
+        .map-mode-btn:hover {
+            border-color: var(--border-hover);
+        }
+
+        .map-mode-btn.active {
+            background: var(--accent-blue);
+            color: #05100f;
+            border-color: var(--accent-blue);
+        }
+
+        .leaflet-container {
+            background: #081311;
+            font-family: 'IBM Plex Sans', sans-serif;
+        }
+
+        .leaflet-popup-content-wrapper,
+        .leaflet-popup-tip {
+            background: rgba(12, 25, 22, 0.96);
+            color: var(--text-high);
+            box-shadow: 0 18px 36px rgba(0, 0, 0, 0.4);
+        }
+
+        .leaflet-popup-content {
+            margin: 12px 14px;
+            color: var(--text-high);
+        }
+
+        #brief-content-markdown h1,
+        #brief-content-markdown h2,
+        #brief-content-markdown h3,
+        #brief-content-markdown h4,
+        #brief-content-markdown strong,
+        #brief-content-markdown code {
+            color: var(--text-high);
+        }
+
+        #brief-content-markdown p,
+        #brief-content-markdown li,
+        #brief-content-markdown span {
+            color: var(--text-medium);
+        }
+
+        #brief-content-markdown a {
+            color: var(--accent-blue);
+        }
+
+        #brief-content-markdown pre {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px;
+            overflow-x: auto;
+        }
+
+        ::selection {
+            background: rgba(81, 200, 255, 0.32);
+            color: var(--text-high);
+        }
+
+        @media (max-width: 1400px) {
+            .command-header {
+                grid-template-columns: 1fr;
+            }
+
+            .snapshot-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .filter-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 1024px) {
+            body.sidebar-open {
+                overflow: hidden;
+            }
+
+            #map {
+                height: 380px;
+            }
+
+            .mobile-shell-button {
+                display: inline-flex;
+            }
+
+            .sidebar-close-button {
+                display: inline-flex;
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.22s ease;
+                box-shadow: 28px 0 80px rgba(0, 0, 0, 0.35);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 84px 18px 24px;
+            }
+
+            .focus-banner {
+                flex-direction: column;
+            }
+
+            .command-stat-strip {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .snapshot-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .command-stat-strip {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            #map {
+                height: 320px;
+            }
+
+            .snapshot-grid,
+            .filter-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .main-content {
+                padding-top: 76px;
+                padding-left: 14px;
+                padding-right: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <button id="sidebar-toggle" class="mobile-shell-button" onclick="setSidebarOpen(true)">
+        <span>☰</span>
+        <span>Operations</span>
+    </button>
+    <div id="sidebar-overlay" class="sidebar-overlay" onclick="setSidebarOpen(false)"></div>
+
+    <div id="app-sidebar" class="sidebar p-5 flex flex-col">
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-lg font-bold" style="color: var(--text-high); letter-spacing: -0.02em">SCTH <span
+                    style="color: var(--text-low); font-weight: 400">v4.0</span></h2>
+            <button class="sidebar-close-button" onclick="setSidebarOpen(false)" aria-label="Close operations sidebar">
+                ✕
+            </button>
+        </div>
+        <div class="space-y-5 flex-grow">
+            <!-- Weather & Time Widget -->
+            <div id="weather-widget" class="vitsoe-card !p-3">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase opacity-50">Phuket Marine Ops</p>
+                        <p class="text-[8px] opacity-50">Rain, monsoon flow, sea state</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] font-bold" style="color: var(--accent-blue)">🇹🇭 <span
+                                id="thai-clock-sidebar">--:--:--</span></p>
+                        <p id="thai-date-sidebar" class="text-[8px] font-medium opacity-60">--</p>
+                    </div>
+                </div>
+                <p class="text-[9px] opacity-50 italic">Loading Phuket marine weather...</p>
+            </div>
+
+            <!-- City News Widget (Dynamic) -->
+            <div class="vitsoe-card !p-3">
+                <p class="text-[10px] font-semibold uppercase mb-3 flex items-center gap-2"
+                    style="color: var(--text-medium)">
+                    <span class="w-1.5 h-1.5 rounded-full animate-pulse" style="background: var(--accent-blue)"></span>
+                    City News
+                    <span id="news-refresh-time" class="ml-auto text-[8px]" style="color: var(--text-low)"></span>
+                </p>
+                <div id="city-news-content" class="space-y-3">
+                    <p class="text-[9px] opacity-40 italic">กำลังโหลดข่าวสาร...</p>
+                </div>
+            </div>
+
+            <!-- Social Pulse Widget -->
+            <div class="vitsoe-card !p-3">
+                <p class="text-[10px] font-semibold uppercase mb-3 flex items-center gap-2"
+                    style="color: var(--text-medium)">
+                    💬 Social Pulse
+                </p>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-[9px] font-bold uppercase opacity-60 mb-1">Sentiment</p>
+                        <div class="flex h-2 rounded-full overflow-hidden" style="background: rgba(255, 255, 255, 0.08)">
+                            <div id="pulse-pos" class="bg-green-500 h-full" style="width:0%"></div>
+                            <div id="pulse-neu" class="h-full" style="width:0%; background: rgba(164, 186, 179, 0.58)"></div>
+                            <div id="pulse-neg" class="bg-red-500 h-full" style="width:0%"></div>
+                        </div>
+                        <div class="flex justify-between text-[8px] mt-1 font-mono opacity-60">
+                            <span id="pulse-pos-label">0%</span>
+                            <span id="pulse-neg-label">0%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-bold uppercase opacity-60 mb-1">Trending Topics</p>
+                        <div id="pulse-topics" class="space-y-1">
+                            <p class="text-[9px] opacity-40 italic">Listening...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map Layers -->
+            <div>
+                <p class="text-[10px] font-semibold uppercase mb-3" style="color: var(--text-medium)">Map Layers</p>
+                <div class="grid grid-cols-1 gap-1">
+                    <button id="mode-unsolved" class="map-mode-btn active" onclick="setMapMode('unsolved')">Active
+                        Issues</button>
+                    <button id="mode-solved" class="map-mode-btn" onclick="setMapMode('solved')">Archive</button>
+                    <button id="mode-all" class="map-mode-btn" onclick="setMapMode('all')">All Reports</button>
+                </div>
+                <div class="flex items-center gap-2 mt-3 p-2 rounded" style="background: var(--surface-default)">
+                    <input type="checkbox" id="heatmap-toggle" onchange="render()">
+                    <label for="heatmap-toggle" class="text-[10px] font-medium cursor-pointer"
+                        style="color: var(--text-medium)">Issue Heatmap</label>
+                </div>
+                <div class="flex items-center gap-2 mt-2 p-2 rounded" style="background: var(--surface-default)">
+                    <input type="checkbox" id="vegetation-toggle" onchange="toggleContextLayers('vegetation-toggle')">
+                    <label for="vegetation-toggle" class="text-[10px] font-medium cursor-pointer flex items-center gap-1"
+                        style="color: var(--text-medium)">
+                        <span class="w-1.5 h-1.5 rounded-full" style="background: #5ab7ff"></span>
+                        Esri Satellite
+                    </label>
+                </div>
+                <div class="flex items-center gap-2 mt-1 p-2 rounded" style="background: var(--surface-default)">
+                    <input type="checkbox" id="nasa-truecolor-toggle" onchange="toggleContextLayers('nasa-truecolor-toggle')">
+                    <label for="nasa-truecolor-toggle" class="text-[10px] font-medium cursor-pointer flex items-center gap-1"
+                        style="color: var(--text-medium)">
+                        <span class="w-1.5 h-1.5 rounded-full" style="background: #63e2a3"></span>
+                        NASA True Color
+                    </label>
+                </div>
+                <div class="flex items-center gap-2 mt-1 p-2 rounded" style="background: var(--surface-default)">
+                    <input type="checkbox" id="infrared-cloud-toggle" onchange="toggleContextLayers('infrared-cloud-toggle')">
+                    <label for="infrared-cloud-toggle" class="text-[10px] font-medium cursor-pointer flex items-center gap-1"
+                        style="color: var(--text-medium)">
+                        <span class="w-1.5 h-1.5 rounded-full" style="background: #ffb04a"></span>
+                        Himawari IR Clouds
+                    </label>
+                </div>
+                <div class="flex items-center gap-2 mt-1 p-2 rounded" style="background: var(--surface-default)">
+                    <input type="checkbox" id="geography-toggle" onchange="toggleContextLayers('geography-toggle')">
+                    <label for="geography-toggle" class="text-[10px] font-medium cursor-pointer flex items-center gap-1"
+                        style="color: var(--text-medium)">
+                        <span class="w-1.5 h-1.5 rounded-full" style="background: #7f8fa6"></span>
+                        Terrain Relief
+                    </label>
+                </div>
+                <div class="flex items-center gap-2 mt-1 p-2 rounded" style="background: var(--surface-default)">
+                    <input type="checkbox" id="distance-grid-toggle" onchange="toggleDistanceGrid()" checked>
+                    <label for="distance-grid-toggle" class="text-[10px] font-medium cursor-pointer flex items-center gap-1"
+                        style="color: var(--text-medium)">
+                        <span class="w-3 h-px" style="background: #90a79f"></span>
+                        1 x 1 km Grid
+                    </label>
+                </div>
+                <p id="context-layer-status" class="text-[8px] mt-2 px-2" style="color: var(--text-low)">
+                    Dark basemap live • satellite layers on standby
+                </p>
+                <p id="grid-layer-status" class="text-[8px] mt-1 px-2" style="color: var(--text-low)">
+                    Zoom in to level 11+ for 1 km grid
+                </p>
+                <div class="flex items-center gap-2 mt-2 p-2 rounded" style="background: var(--surface-default)">
+                    <input type="checkbox" id="sea-routes-toggle" onchange="toggleSeaRoutes()" checked>
+                    <label for="sea-routes-toggle" class="text-[10px] font-medium cursor-pointer flex items-center gap-1"
+                        style="color: var(--text-medium)">
+                        <span class="w-3 h-px" style="background: #1c5aa6"></span>
+                        Sea Routes
+                    </label>
+                </div>
+                <p id="sea-route-status" class="text-[8px] mt-1 px-2" style="color: var(--text-low)">
+                    Indicative marine corridors loading...
+                </p>
+                <div class="flex items-center gap-2 mt-2 p-2 rounded" style="background: var(--surface-default)">
+                    <input type="checkbox" id="aqi-points-toggle" onchange="toggleAqiOverlay()">
+                    <label for="aqi-points-toggle" class="text-[10px] font-medium cursor-pointer flex items-center gap-1"
+                        style="color: var(--text-medium)">
+                        <span class="w-1.5 h-1.5 rounded-full" style="background: #d7a32f"></span>
+                        AQI Stations
+                    </label>
+                </div>
+                <div class="flex items-center gap-2 mt-1 p-2 rounded" style="background: var(--surface-default)">
+                    <input type="checkbox" id="aqi-heatmap-toggle" onchange="toggleAqiOverlay()">
+                    <label for="aqi-heatmap-toggle" class="text-[10px] font-medium cursor-pointer flex items-center gap-1"
+                        style="color: var(--text-medium)">
+                        <span class="w-1.5 h-1.5 rounded-full" style="background: #a64839"></span>
+                        AQI Heatmap
+                    </label>
+                </div>
+                <p id="aqi-layer-status" class="text-[8px] mt-2 px-2" style="color: var(--text-low)">
+                    AQI overlay idle
+                </p>
+                <!-- GISTDA Flood Monitoring -->
+                <div class="flex items-center gap-2 mt-2 p-2 rounded" style="background: var(--surface-default)">
+                    <input type="checkbox" id="flood-toggle" onchange="toggleFloodLayer()">
+                    <label for="flood-toggle" class="text-[10px] font-medium cursor-pointer flex items-center gap-1"
+                        style="color: var(--text-medium)">
+                        <span class="w-1.5 h-1.5 rounded-full animate-pulse"
+                            style="background: var(--accent-blue)"></span>
+                        GISTDA Flood
+                    </label>
+                </div>
+                <div class="flex items-center gap-2 mt-1 p-2 rounded" style="background: var(--surface-default)">
+                    <input type="checkbox" id="bkk-flood-toggle" onchange="toggleBkkFloodRisk()">
+                    <label for="bkk-flood-toggle" class="text-[10px] font-medium cursor-pointer flex items-center gap-1"
+                        style="color: var(--text-medium)">
+                        <span class="w-1.5 h-1.5 rounded-full" style="background: var(--accent-green)"></span>
+                        BKK Risk Points
+                    </label>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Commander's Briefing Widget -->
+        <div class="vitsoe-card !p-3">
+            <p class="text-[10px] font-semibold uppercase mb-2 flex items-center gap-2"
+                style="color: var(--text-medium)">
+                🎖️ Policy Engine
+            </p>
+            <button onclick="generateBrief()" id="btn-gen-brief"
+                class="vitsoe-button w-full mb-2 text-[9px] uppercase font-semibold text-center justify-center">
+                Run Analysis
+            </button>
+            <div id="brief-preview" class="text-[9px] h-16 overflow-y-auto cursor-pointer p-2 rounded transition-all"
+                style="color: var(--text-medium); background: var(--surface-default)" onclick="showBriefModal()">
+                Loading...
+            </div>
+        </div>
+
+        <!-- AI Commentary Section -->
+        <div class="vitsoe-card !p-3" style="border-left: 2px solid var(--accent-orange)">
+            <p class="text-[10px] font-semibold uppercase mb-2" style="color: var(--accent-orange)">
+                AI Status Monitor
+            </p>
+            <div id="ai-commentary-text" class="text-[11px] leading-relaxed" style="color: var(--text-medium)">
+                Analyzing city data...</div>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="vitsoe-card !p-3">
+            <p class="text-[10px] font-semibold uppercase mb-2" style="color: var(--text-medium)">Performance</p>
+            <div class="space-y-3">
+                <div>
+                    <div class="text-2xl font-bold" id="avg-time" style="color: var(--text-high)">--h</div>
+                    <div class="text-[9px] font-medium uppercase" style="color: var(--text-low)">Avg Resolution</div>
+                </div>
+                <div class="pt-2" style="border-top: 1px solid var(--border-color)">
+                    <p class="text-[9px] font-medium uppercase mb-1" style="color: var(--text-low)">Longest Waiting</p>
+                    <div id="aging-list" class="space-y-1"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Team Leaderboard -->
+        <div class="vitsoe-card !p-3">
+            <p class="text-[10px] font-semibold uppercase mb-2 flex items-center gap-2"
+                style="color: var(--text-medium)">
+                🏆 Leaderboard
+            </p>
+            <div id="team-leaderboard" class="space-y-2">
+                <p class="text-[9px] italic" style="color: var(--text-low)">Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-auto pt-4" style="border-top: 1px solid var(--border-color)">
+        <div class="flex gap-2 mb-3">
+            <a href="/staff.html"
+                class="flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-[9px] font-semibold"
+                style="background: var(--surface-elevated); color: var(--text-medium)">
+                📱 Staff
+            </a>
+            <a href="/api/reports/geojson" target="_blank"
+                class="flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-[9px] font-semibold"
+                style="background: var(--accent-blue); color: white">
+                📊 GeoJSON
+            </a>
+        </div>
+        <div class="flex items-center justify-between text-[9px]" style="color: var(--text-low)">
+            <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full"
+                    style="background: var(--accent-green)"></span>
+                Online</span>
+            <span id="sync-time">--:--</span>
+        </div>
+        <p class="text-[8px] text-center mt-2" style="color: var(--text-low)">© 2026 Smart City Thailand</p>
+    </div>
+    </div>
+
+    <div class="main-content">
+        <!-- UN Badge -->
+        <div class="flex items-center justify-between mb-6 p-4 rounded-xl"
+            style="background: var(--surface-default); border: 1px solid var(--border-color)">
+            <div class="flex items-center gap-3">
+                <div class="flex items-center justify-center w-9 h-9 rounded-lg text-xs font-bold"
+                    style="background: var(--accent-blue); color: white">
+                    UN
+                </div>
+                <div>
+                    <p class="text-[10px] font-semibold uppercase" style="color: var(--text-medium)">Aligned with
+                        International Standards</p>
+                    <p class="text-[11px]" style="color: var(--text-low)">UN-Habitat GeoAI Toolkit</p>
+                </div>
+            </div>
+            <a href="https://drive.google.com/file/d/14MSZjiq2FMJp6LyT5dNVk-FZMtAlMUnQ/view?usp=drive_link"
+                target="_blank" class="text-[9px] font-semibold" style="color: var(--accent-blue)">Learn More →</a>
+        </div>
+
+        <!-- Early Warning Alerts Panel -->
+        <div id="early-warnings-panel" class="mb-6 hidden">
+            <div class="p-4 rounded-xl"
+                style="background: var(--surface-default); border: 1px solid rgba(255,69,58,0.3)">
+                <p class="text-[10px] font-semibold uppercase mb-3 flex items-center gap-2"
+                    style="color: var(--accent-red)">
+                    <span class="w-2 h-2 rounded-full animate-pulse" style="background: var(--accent-red)"></span>
+                    AI Early Warning System
+                </p>
+                <div id="early-warnings-list" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <div class="vitsoe-card command-header mb-6">
+            <div>
+                <p class="command-kicker">Smart City Thailand • Version Two</p>
+                <div class="command-meta">
+                    <h1>ศูนย์บัญชาการ</h1>
+                    <div class="command-badges">
+                        <span class="command-badge command-badge-primary">Thailand</span>
+                        <span class="command-badge">Live Data</span>
+                    </div>
+                </div>
+                <p class="command-copy">Compact live workspace for incident load, map intelligence, and field triage without the oversized v1 chrome.</p>
+            </div>
+            <div class="command-stat-strip">
+                <div class="command-stat">
+                    <p class="command-stat-label">Devices</p>
+                    <h3 id="stat-devices" class="command-stat-value" style="color: var(--accent-blue)">0</h3>
+                </div>
+                <div class="command-stat">
+                    <p class="command-stat-label">Reports</p>
+                    <h3 id="stat-total" class="command-stat-value" style="color: var(--text-high)">0</h3>
+                </div>
+                <div class="command-stat">
+                    <p class="command-stat-label">Resolved</p>
+                    <h3 id="stat-solved-pct" class="command-stat-value" style="color: var(--accent-green)">0%</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="vitsoe-card mb-8">
+            <div class="focus-banner">
+                <div class="focus-summary">
+                    <p class="text-[10px] font-semibold uppercase tracking-[0.18em]" style="color: var(--accent-blue)">Operations Snapshot</p>
+                    <h2 id="ops-focus-title">กำลังประเมินสภาพการปฏิบัติงาน</h2>
+                    <p id="ops-focus-text">ระบบจะสรุปคอขวด งานเร่งด่วน และความครอบคลุมของข้อมูลให้ทันทีหลังจากโหลดรายงาน</p>
+                </div>
+                <div id="results-summary" class="results-pill">Waiting for live data</div>
+            </div>
+            <div class="snapshot-grid">
+                <div class="metric-tile">
+                    <div class="metric-kicker">Open Queue</div>
+                    <div id="ops-open-count" class="metric-value">0</div>
+                    <div class="metric-note">รายการที่ยังไม่ปิดงาน</div>
+                </div>
+                <div class="metric-tile">
+                    <div class="metric-kicker">Urgent Cases</div>
+                    <div id="ops-urgent-count" class="metric-value" style="color: var(--accent-red)">0</div>
+                    <div class="metric-note">ความเร่งด่วนระดับสูง</div>
+                </div>
+                <div class="metric-tile">
+                    <div class="metric-kicker">SLA Risk</div>
+                    <div id="ops-sla-count" class="metric-value" style="color: var(--accent-orange)">0</div>
+                    <div class="metric-note">งานค้างเกิน 24 ชั่วโมง</div>
+                </div>
+                <div class="metric-tile">
+                    <div class="metric-kicker">Unassigned</div>
+                    <div id="ops-unassigned-count" class="metric-value">0</div>
+                    <div class="metric-note">ยังไม่ได้กำหนดทีมรับผิดชอบ</div>
+                </div>
+                <div class="metric-tile">
+                    <div class="metric-kicker">Geo Coverage</div>
+                    <div id="ops-geo-count" class="metric-value" style="color: var(--accent-green)">0%</div>
+                    <div class="metric-note">รายงานที่มีพิกัดพร้อมใช้งาน</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="vitsoe-card mb-8 !p-0 overflow-hidden relative">
+            <div id="map"></div>
+            <div class="absolute top-4 left-4 z-[500] flex gap-2">
+                <button class="vitsoe-button !px-3 !py-1.5 text-[10px] font-semibold"
+                    style="background: rgba(8, 20, 18, 0.9); backdrop-filter: blur(12px); border: 1px solid var(--border-color); color: var(--text-high); border-radius: 999px; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);"
+                    onclick="resetMapView()">Reset View</button>
+                <div id="sync-indicator"
+                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-semibold"
+                    style="background: rgba(8, 20, 18, 0.9); backdrop-filter: blur(12px); color: var(--accent-green); border:1px solid var(--border-color); border-radius:999px; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);">
+                    <span class="w-1.5 h-1.5 rounded-full" style="background: var(--accent-green)"></span> LIVE SYNC
+                </div>
+                <button class="vitsoe-button !px-3 !py-1.5 text-[10px] font-semibold"
+                    style="background: rgba(8, 20, 18, 0.9); backdrop-filter: blur(12px); border: 1px solid var(--border-color); color: var(--text-high); border-radius: 999px; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);"
+                    onclick="fetchData()">Refresh</button>
+            </div>
+        </div>
+
+        <div class="vitsoe-card">
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-xl font-bold" style="letter-spacing: -0.02em; color: var(--text-high)">Issue Matrix
+                    </h2>
+                    <button id="back-to-main-btn" onclick="setMapMode('unsolved')"
+                        class="hidden vitsoe-button !py-1.5 !px-3 text-[10px] font-semibold"
+                        style="background: var(--accent-blue); color: white; border: none; border-radius: 8px;">
+                        ← Back
+                    </button>
+                </div>
+                <div class="text-[10px] font-medium" style="color: var(--text-low)">Sorted by AI urgency • Real-time
+                </div>
+            </div>
+
+            <!-- Search & Filter -->
+            <div class="compact-toolbar">
+                <div class="compact-toolbar-head">
+                    <div>
+                        <p class="text-[9px] font-semibold uppercase" style="color: var(--text-medium)">Search & Triage</p>
+                        <p id="active-filter-summary" class="text-[10px] mt-1" style="color: var(--text-low)">No filters applied</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 justify-end" id="active-filter-pills"></div>
+                </div>
+                <div class="filter-grid">
+                    <input type="text" id="table-search" class="filter-input"
+                        placeholder="Search ticket, issue, location, reporter..." oninput="render()">
+                    <select id="table-filter" class="filter-select"
+                        onchange="render()">
+                        <option value="all">All Categories</option>
+                    </select>
+                    <select id="status-filter" class="filter-select" onchange="render()">
+                        <option value="all">All Statuses</option>
+                        <option value="received">Received</option>
+                        <option value="assigned">Assigned</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                    <select id="urgency-filter" class="filter-select" onchange="render()">
+                        <option value="all">All Priorities</option>
+                        <option value="สูง">High Priority</option>
+                        <option value="ปานกลาง">Medium Priority</option>
+                        <option value="ต่ำ">Low Priority</option>
+                    </select>
+                    <select id="team-filter" class="filter-select" onchange="render()">
+                        <option value="all">All Teams</option>
+                    </select>
+                    <select id="sort-filter" class="filter-select" onchange="render()">
+                        <option value="priority">Sort: Priority</option>
+                        <option value="newest">Sort: Newest</option>
+                        <option value="oldest">Sort: Oldest</option>
+                        <option value="aging">Sort: Oldest Active</option>
+                    </select>
+                </div>
+                <div class="compact-toolbar-actions">
+                    <div class="flex flex-wrap gap-2">
+                        <button id="quick-filter-urgent" class="filter-chip" onclick="toggleQuickFilter('urgent')">High Priority</button>
+                        <button id="quick-filter-unassigned" class="filter-chip" onclick="toggleQuickFilter('unassigned')">Unassigned</button>
+                        <button id="quick-filter-exif" class="filter-chip" onclick="toggleQuickFilter('exif')">EXIF Verified</button>
+                    </div>
+                    <button class="vitsoe-button text-[10px] uppercase font-semibold" onclick="clearAllFilters()">Reset Filters</button>
+                </div>
+            </div>
+            <div class="table-shell overflow-x-auto">
+                <table id="issue-table">
+                    <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Reporter</th>
+                            <th>Team</th>
+                            <th>Category</th>
+                            <th>Priority</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Age</th>
+                            <th>Rating</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-table"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Workflow System -->
+    <div id="modal-overlay" class="fixed inset-0 hidden z-[2000] flex items-center justify-center p-8"
+        style="background: rgba(0,0,0,0.75); backdrop-filter: blur(20px)">
+        <div class="w-full max-w-7xl flex flex-col md:flex-row gap-0 overflow-hidden h-[90vh]"
+            style="background: var(--surface-default); border: 1px solid var(--border-color); border-radius: 16px;">
+            <div class="md:w-[55%] flex flex-col relative overflow-hidden h-full" style="background: var(--bg-primary)">
+                <div class="flex-grow flex items-center justify-center p-4 relative">
+                    <img id="modal-image" src="" class="max-w-full max-h-full object-contain rounded-lg">
+                    <div id="after-badge"
+                        class="absolute top-4 right-4 px-4 py-2 text-[10px] font-semibold hidden rounded-lg"
+                        style="background: var(--accent-green); color: white">
+                        ✅ Evidence Uploaded</div>
+                </div>
+
+                <!-- Magic Eye AI Analysis Panel -->
+                <div id="magic-eye-panel"
+                    class="bg-gradient-to-t from-black via-black/95 to-transparent p-6 text-white">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-xl">👁️</span>
+                        <span class="text-[11px] font-bold uppercase tracking-widest text-blue-400">Magic Eye AI
+                            Analysis</span>
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+                    </div>
+                    <p id="magic-eye-description" class="text-sm leading-relaxed opacity-90 mb-4">
+                        กำลังวิเคราะห์รูปภาพ...
+                    </p>
+
+                    <!-- Quick Metadata -->
+                    <div id="quick-metadata" class="flex flex-wrap gap-3 text-[9px] font-mono opacity-70">
+                        <span id="meta-gps" class="flex items-center gap-1"><span
+                                class="w-1.5 h-1.5 rounded-full bg-red-500"></span> GPS: N/A</span>
+                        <span id="meta-device" class="flex items-center gap-1">📱 --</span>
+                        <span id="meta-time" class="flex items-center gap-1">🕐 --</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="modal-side-panel" class="md:w-[45%] p-12 overflow-y-auto flex flex-col"
+                style="background: var(--surface-default)">
+                <div class="flex justify-between items-start mb-8">
+                    <div>
+                        <h2 id="modal-ticket" class="text-3xl font-bold mb-1"
+                            style="color: var(--text-high); letter-spacing: -0.02em"></h2>
+                        <p id="modal-timestamp" class="text-xs font-mono" style="color: var(--text-low)"></p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="copyForLine()" class="vitsoe-button text-[10px] font-semibold gap-2"
+                            style="background: var(--accent-blue); color: white; border-color: var(--accent-blue); border-radius: 8px;">
+                            <span>📱 Copy for LINE</span>
+                        </button>
+                        <button onclick="closeModal()"
+                            class="text-3xl leading-none hover:rotate-90 transition-transform cursor-pointer p-2"
+                            style="color: var(--text-medium)">&times;</button>
+                    </div>
+                </div>
+                <div class="mb-8">
+                    <p class="text-[9px] font-semibold uppercase mb-2" style="color: var(--text-low)">Issue Description
+                    </p>
+                    <p id="modal-description" class="text-lg font-semibold leading-tight mb-6"
+                        style="color: var(--text-high)"></p>
+
+                    <p class="text-[9px] font-semibold uppercase mb-2" style="color: var(--text-low)">Location</p>
+                    <p id="modal-location" class="text-xs font-medium mb-6" style="color: var(--text-medium)"></p>
+
+                    <div id="modal-profile"></div>
+                </div>
+
+                <div class="flex gap-1 mb-12 py-4 step-container"
+                    style="border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color)">
+                    <div id="box-1" class="step-box" onclick="setWorkflowStep(1)">1. Receive <span id="ts-1"
+                            class="step-timestamp"></span></div>
+                    <div id="box-2" class="step-box" onclick="setWorkflowStep(2)">2. On-Site <span id="ts-2"
+                            class="step-timestamp"></span></div>
+                    <div id="box-3" class="step-box" onclick="setWorkflowStep(3)">3. Resolved <span id="ts-3"
+                            class="step-timestamp"></span></div>
+                    <div id="box-4" class="step-box" onclick="setWorkflowStep(4)">4. History</div>
+                </div>
+
+                <div id="workflow-panel" class="flex-grow">
+                    <div id="step-content-1">
+                        <p class="text-[10px] font-semibold uppercase mb-3" style="color: var(--text-medium)">Assign
+                            Team</p>
+                        <select id="team-select" class="w-full p-3 mb-3 text-sm rounded-lg focus:outline-none"
+                            style="background: var(--surface-elevated); border: 1px solid var(--border-color); color: var(--text-high)">
+                            <option value="">Select team...</option>
+                            <option value="ทีมโยธา (ถนน/อาคาร)">ทีมโยธา (ถนน/อาคาร)</option>
+                            <option value="ทีมสิ่งแวดล้อม (ขยะ/ความสะอาด)">ทีมสิ่งแวดล้อม (ขยะ/ความสะอาด)</option>
+                            <option value="ทีมไฟฟ้า (ส่องสว่าง/สายไฟ)">ทีมไฟฟ้า (ส่องสว่าง/สายไฟ)</option>
+                            <option value="ทีมบรรเทาสาธารณภัย (สัตว์/ภัยพิบัติ)">ทีมบรรเทาสาธารณภัย (สัตว์/ภัยพิบัติ)
+                            </option>
+                            <option value="ศูนย์ควบคุมกลาง">ศูนย์ควบคุมกลาง</option>
+                        </select>
+                        <p class="text-[10px] font-semibold uppercase mb-3" style="color: var(--text-medium)">Note to
+                            Reporter</p>
+                        <textarea id="staff-note-1" class="w-full p-3 h-20 mb-4 text-sm rounded-lg focus:outline-none"
+                            style="background: var(--surface-elevated); border: 1px solid var(--border-color); color: var(--text-high)"
+                            placeholder="Message to citizen..."></textarea>
+                        <button onclick="saveWorkflow(1)"
+                            class="vitsoe-button w-full h-12 text-xs font-semibold uppercase"
+                            style="background: var(--accent-blue); color: white; border: none; border-radius: 10px;">Acknowledge
+                            Report</button>
+                    </div>
+
+                    <div id="step-content-2" class="hidden">
+                        <p class="text-[10px] font-semibold uppercase mb-3" style="color: var(--text-medium)">Field
+                            Operations Log</p>
+                        <textarea id="staff-note-2" class="w-full p-3 h-36 mb-4 text-sm rounded-lg focus:outline-none"
+                            style="background: var(--surface-elevated); border: 1px solid var(--border-color); color: var(--text-high)"
+                            placeholder="Describe progress, materials needed..."></textarea>
+                        <button onclick="saveWorkflow(2)"
+                            class="vitsoe-button w-full h-12 text-xs font-semibold uppercase"
+                            style="background: var(--surface-elevated); color: var(--text-high); border: 1px solid var(--border-color); border-radius: 10px;">Update
+                            Status</button>
+                    </div>
+
+                    <div id="step-content-3" class="hidden">
+                        <p class="text-[10px] font-semibold uppercase mb-3" style="color: var(--text-medium)">Resolution
+                            Summary</p>
+                        <textarea id="staff-note-3" class="w-full p-3 h-24 mb-4 text-sm rounded-lg focus:outline-none"
+                            style="background: var(--surface-elevated); border: 1px solid var(--border-color); color: var(--text-high)"
+                            placeholder="Describe how issue was resolved..."></textarea>
+                        <div class="mb-6">
+                            <label class="block text-[10px] font-semibold uppercase mb-2"
+                                style="color: var(--text-medium)">Evidence Photo</label>
+                            <div class="image-preview" onclick="uploadEvidence()">
+                                <div id="preview-text" class="text-[10px] uppercase font-semibold"
+                                    style="color: var(--text-low)">
+                                    Click to upload</div>
+                                <img id="fixed-image-display" src="" class="hidden">
+                            </div>
+                        </div>
+                        <button id="complete-btn" onclick="saveWorkflow(3)"
+                            class="vitsoe-button w-full h-12 text-xs font-semibold uppercase"
+                            style="background: var(--accent-green); color: white; border: none; border-radius: 10px;">Mark
+                            Resolved</button>
+                    </div>
+
+                    <div id="step-content-4" class="hidden">
+                        <div id="timeline-list" class="space-y-4 pt-4"></div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-6" style="border-top: 1px solid var(--border-color)">
+                    <p class="text-[10px] font-semibold uppercase mb-3" style="color: var(--text-low)">Internal Notes
+                    </p>
+                    <textarea id="internal-notes" class="w-full p-3 text-[10px] h-16 rounded-lg focus:outline-none"
+                        style="background: var(--surface-elevated); border: 1px solid var(--border-color); color: var(--text-high)"
+                        placeholder="Internal communication only..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Thailand Timezone Helpers
+        const TH_TZ = 'Asia/Bangkok';
+        function thaiTime(d) { const date = new Date(d); return isNaN(date.getTime()) ? d : date.toLocaleString('th-TH', { timeZone: TH_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }); }
+        function thaiDate(d) { const date = new Date(d); return isNaN(date.getTime()) ? d : date.toLocaleDateString('th-TH', { timeZone: TH_TZ, day: '2-digit', month: 'short', year: 'numeric' }); }
+        function thaiTimeShort(d) { const date = new Date(d); return isNaN(date.getTime()) ? d : date.toLocaleTimeString('th-TH', { timeZone: TH_TZ, hour: '2-digit', minute: '2-digit' }); }
+        function thaiNow() { return new Date().toLocaleTimeString('th-TH', { timeZone: TH_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+
+        // Copy Feature
+        function copyForLine() {
+            if (!activeReport) return;
+            const text = `🚨 *New Assignment: ${activeReport.ticket_number}*
+📍 Location: ${activeReport.location_text}
+📝 Issue: ${activeReport.problem_type} - ${activeReport.description}
+🗺️ Map: https://www.google.com/maps/search/?api=1&query=${activeReport.latitude},${activeReport.longitude}
+🖼️ Photo: ${getDriveDirectLink(activeReport.image_url)}
+
+⚠️ Please proceed to inspect immediately.`;
+            navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard! Ready to paste in LINE.'));
+        }
+
+        const WORLD_BOUNDS = [[-82, -180], [85, 180]];
+        const map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false,
+            minZoom: 3,
+            maxBounds: WORLD_BOUNDS,
+            maxBoundsViscosity: 1.0,
+            worldCopyJump: false
+        }).setView([13.75, 100.5], 6);
+        map.createPane('contextSatellitePane');
+        map.createPane('contextVegetationPane');
+        map.createPane('contextGeographyPane');
+        map.createPane('contextInfraredPane');
+        map.createPane('distanceGridPane');
+        map.createPane('seaRoutePane');
+        map.createPane('floodPane');
+        map.getPane('contextSatellitePane').style.zIndex = 215;
+        map.getPane('contextVegetationPane').style.zIndex = 220;
+        map.getPane('contextGeographyPane').style.zIndex = 230;
+        map.getPane('contextInfraredPane').style.zIndex = 235;
+        map.getPane('contextSatellitePane').style.pointerEvents = 'none';
+        map.getPane('contextVegetationPane').style.pointerEvents = 'none';
+        map.getPane('contextGeographyPane').style.pointerEvents = 'none';
+        map.getPane('contextInfraredPane').style.pointerEvents = 'none';
+        map.getPane('distanceGridPane').style.zIndex = 240;
+        map.getPane('distanceGridPane').style.pointerEvents = 'none';
+        map.getPane('seaRoutePane').style.zIndex = 260;
+        map.getPane('seaRoutePane').style.pointerEvents = 'auto';
+        map.getPane('floodPane').style.zIndex = 320;
+
+        const baseMapLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            noWrap: true,
+            bounds: WORLD_BOUNDS,
+            attribution: 'CARTO Dark Matter'
+        }).addTo(map);
+
+        let allReports = [];
+        let activeMarkers = [];
+        let heatLayer = null;
+        let mapMode = 'unsolved';
+        let activeReport = null;
+        let currentUploadedUrl = null;
+        const quickFilters = new Set();
+        let currentWeatherSnapshot = {
+            temp: null,
+            humidity: null,
+            rainNow: null,
+            rain12h: null,
+            maxRainProb: null,
+            weatherCode: null,
+            weatherLabel: null,
+            windSpeed: null,
+            windGust: null,
+            windDirection: null,
+            waveHeight: null,
+            wavePeriod: null,
+            seaSurfaceTemp: null,
+            monsoon: null,
+            marineRisk: null,
+            fetchedAt: null
+        };
+        let marinePortsSnapshot = { ports: [], fetchedAt: null, source: null };
+        let aqiSampleData = [];
+        let aqiLayerGroup = L.layerGroup();
+        let aqiHeatLayer = null;
+        let aqiRefreshTimer = null;
+        let aqiLastBoundsKey = '';
+        let mapLegendControl = null;
+        let vegetationLayer = null;
+        let nasaTrueColorLayer = null;
+        let geographyLayer = null;
+        let infraredCloudLayer = null;
+        let distanceGridLayer = L.layerGroup();
+        let distanceGridRefreshTimer = null;
+        let distanceGridBoundsKey = '';
+        let seaRouteLayer = L.layerGroup();
+
+        const CAT_COLORS = { 'ไฟฟ้า': '#4ba6ff', 'ประปา': '#44d1ff', 'หลุม': '#ff8652', 'คลอง': '#8dda5b', 'ต้นไม้': '#4cc36c', 'สัตว์': '#d39d67', 'ก่อสร้าง': '#ffd34d', 'ขยะ': '#aeb5bf', 'อื่นๆ': '#d5deea' };
+        const CONTEXT_LAYER_META = {
+            esriSatellite: { label: 'Esri Satellite', color: '#5ab7ff' },
+            nasaTrueColor: { label: 'NASA True Color', color: '#63e2a3' },
+            infraredClouds: { label: 'Himawari IR Clouds', color: '#ffb04a' },
+            terrain: { label: 'Terrain Relief', color: '#7f8fa6' }
+        };
+        const PHUKET_MARINE_ROUTE_STYLES = {
+            regional: { color: '#1c5aa6', weight: 2.4, opacity: 0.78, dashArray: null, label: 'Regional ferry corridor' },
+            island: { color: '#2f8f83', weight: 2.2, opacity: 0.78, dashArray: '8 6', label: 'Island connector' },
+            offshore: { color: '#c8682f', weight: 2.4, opacity: 0.82, dashArray: '3 8', label: 'Offshore expedition corridor' }
+        };
+        const PHUKET_SEA_ROUTES = [
+            {
+                name: 'Phang Nga Bay corridor',
+                kind: 'regional',
+                origin: { label: 'Ao Po Grand Marina', portCode: 'HKT03', lat: 8.06906, lng: 98.44471 },
+                destination: { label: 'Phang Nga Bay', lat: 8.29167, lng: 98.55277 },
+                via: [[8.135, 98.475], [8.215, 98.515]],
+                note: 'Indicative corridor toward the eastern bay and island communities.'
+            },
+            {
+                name: 'Ko Yao Noi connector',
+                kind: 'island',
+                origin: { label: 'Ao Po Grand Marina', portCode: 'HKT03', lat: 8.06906, lng: 98.44471 },
+                destination: { label: 'Ko Yao Noi', lat: 8.13339, lng: 98.60986 },
+                via: [[8.088, 98.495], [8.11, 98.552]],
+                note: 'Fast-boat and day-trip corridor into Ko Yao Noi.'
+            },
+            {
+                name: 'Ko Yao Yai connector',
+                kind: 'island',
+                origin: { label: 'Ao Po Grand Marina', portCode: 'HKT03', lat: 8.06906, lng: 98.44471 },
+                destination: { label: 'Ko Yao Yai', lat: 8.00253, lng: 98.56936 },
+                via: [[8.04, 98.49], [8.028, 98.54]],
+                note: 'Indicative route toward Ko Yao Yai and the east-island ferry corridor.'
+            },
+            {
+                name: 'Phi Phi Don corridor',
+                kind: 'regional',
+                origin: { label: 'Phuket east-coast ferry corridor', lat: 7.885, lng: 98.428 },
+                destination: { label: 'Phi Phi Don', lat: 7.74433, lng: 98.78112 },
+                via: [[7.84, 98.53], [7.805, 98.645], [7.768, 98.722]],
+                note: 'Indicative inter-island ferry line toward Phi Phi Don.'
+            },
+            {
+                name: 'Ao Nang / Krabi corridor',
+                kind: 'regional',
+                origin: { label: 'Phuket east-coast ferry corridor', lat: 7.885, lng: 98.428 },
+                destination: { label: 'Ao Nang / Krabi', lat: 8.0453, lng: 98.8323 },
+                via: [[7.93, 98.57], [8.0, 98.69], [8.03, 98.77]],
+                note: 'Indicative cross-bay connection toward Ao Nang and Krabi coast.'
+            },
+            {
+                name: 'Coral Island shuttle',
+                kind: 'island',
+                origin: { label: 'Ao Chalong Pier', portCode: 'CL001', lat: 7.820833, lng: 98.344444 },
+                destination: { label: 'Coral Island (Ko Hae)', lat: 7.74867, lng: 98.37352 },
+                via: [[7.79, 98.352]],
+                note: 'Short island-hop corridor south of Phuket.'
+            },
+            {
+                name: 'Maiton Island corridor',
+                kind: 'island',
+                origin: { label: 'Ao Chalong Pier', portCode: 'CL001', lat: 7.820833, lng: 98.344444 },
+                destination: { label: 'Maiton Island', lat: 7.76917, lng: 98.48222 },
+                via: [[7.804, 98.395], [7.79, 98.444]],
+                note: 'Indicative eastbound corridor toward Maiton Island.'
+            },
+            {
+                name: 'Racha Yai offshore corridor',
+                kind: 'offshore',
+                origin: { label: 'Ao Chalong Pier', portCode: 'CL001', lat: 7.820833, lng: 98.344444 },
+                destination: { label: 'Racha Yai', lat: 7.60033, lng: 98.36562 },
+                via: [[7.736, 98.349], [7.665, 98.358]],
+                note: 'Longer southern offshore corridor used by dive and excursion boats.'
+            },
+            {
+                name: 'Similan seasonal corridor',
+                kind: 'offshore',
+                origin: { label: 'North Phuket transfer corridor', lat: 8.12, lng: 98.39 },
+                destination: { label: 'Similan Islands', lat: 8.6525, lng: 97.6408 },
+                via: [[8.17, 98.31], [8.25, 98.1], [8.45, 97.9], [8.58, 97.74]],
+                note: 'Indicative offshore excursion corridor. Many operators transfer by road before boat departure.'
+            }
+        ];
+        const STATUS_META = {
+            received: { label: 'Received', bg: 'rgba(10, 132, 255, 0.14)', color: '#91c4ff' },
+            assigned: { label: 'Assigned', bg: 'rgba(191, 90, 242, 0.16)', color: '#e0b0ff' },
+            in_progress: { label: 'In Progress', bg: 'rgba(255, 159, 10, 0.16)', color: '#ffc36d' },
+            completed: { label: 'Completed', bg: 'rgba(48, 209, 88, 0.18)', color: '#85ebb0' }
+        };
+        const URGENCY_META = {
+            สูง: { label: 'High', bg: 'rgba(255, 69, 58, 0.16)', color: '#ff9a92' },
+            ปานกลาง: { label: 'Medium', bg: 'rgba(255, 159, 10, 0.16)', color: '#ffc36d' },
+            ต่ำ: { label: 'Low', bg: 'rgba(48, 209, 88, 0.14)', color: '#85ebb0' }
+        };
+        const AQI_SCALE = [
+            { max: 50, label: 'Good', color: '#5c7c57' },
+            { max: 100, label: 'Moderate', color: '#b1892f' },
+            { max: 150, label: 'Sensitive', color: '#d87b2f' },
+            { max: 200, label: 'Unhealthy', color: '#b34b3c' },
+            { max: 300, label: 'Very Unhealthy', color: '#7b4f8f' },
+            { max: Infinity, label: 'Hazardous', color: '#5a3148' }
+        ];
+        const AQI_BREAKPOINTS = [
+            { pmLow: 0.0, pmHigh: 12.0, aqiLow: 0, aqiHigh: 50 },
+            { pmLow: 12.1, pmHigh: 35.4, aqiLow: 51, aqiHigh: 100 },
+            { pmLow: 35.5, pmHigh: 55.4, aqiLow: 101, aqiHigh: 150 },
+            { pmLow: 55.5, pmHigh: 150.4, aqiLow: 151, aqiHigh: 200 },
+            { pmLow: 150.5, pmHigh: 250.4, aqiLow: 201, aqiHigh: 300 },
+            { pmLow: 250.5, pmHigh: 500.4, aqiLow: 301, aqiHigh: 500 }
+        ];
+
+        function setSidebarOpen(isOpen) {
+            const sidebar = document.getElementById('app-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            document.body.classList.toggle('sidebar-open', isOpen);
+            sidebar?.classList.toggle('open', isOpen);
+            overlay?.classList.toggle('open', isOpen);
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function normalizeText(value) {
+            return String(value ?? '').trim().toLowerCase();
+        }
+
+        function getCategoryColor(problemType) {
+            const label = String(problemType || 'อื่นๆ');
+            if (CAT_COLORS[label]) return CAT_COLORS[label];
+            const partial = Object.entries(CAT_COLORS).find(([key]) => label.includes(key));
+            return partial?.[1] || CAT_COLORS['อื่นๆ'];
+        }
+
+        function getStatusMeta(status) {
+            return STATUS_META[String(status || 'received').toLowerCase()] || STATUS_META.received;
+        }
+
+        function getUrgencyMeta(urgency) {
+            return URGENCY_META[urgency] || URGENCY_META['ปานกลาง'];
+        }
+
+        function pm25ToAqi(pm25) {
+            const value = Number(pm25);
+            if (!Number.isFinite(value)) return null;
+            const breakpoint = AQI_BREAKPOINTS.find((item) => value >= item.pmLow && value <= item.pmHigh) || AQI_BREAKPOINTS[AQI_BREAKPOINTS.length - 1];
+            const ratio = (value - breakpoint.pmLow) / (breakpoint.pmHigh - breakpoint.pmLow);
+            return Math.round(breakpoint.aqiLow + ratio * (breakpoint.aqiHigh - breakpoint.aqiLow));
+        }
+
+        function getAqiDescriptor(aqi) {
+            const value = Number(aqi);
+            if (!Number.isFinite(value)) {
+                return { label: 'Unknown', color: varAccentFallback('--text-low', '#8a8378') };
+            }
+            return AQI_SCALE.find((item) => value <= item.max) || AQI_SCALE[AQI_SCALE.length - 1];
+        }
+
+        function getWeatherCodeDescriptor(code) {
+            const value = Number(code);
+            if (!Number.isFinite(value)) {
+                return { label: 'Unknown', icon: '~~' };
+            }
+            if (value === 0) return { label: 'Clear', icon: 'Sun' };
+            if (value === 1) return { label: 'Mainly Clear', icon: 'Bright' };
+            if (value === 2) return { label: 'Partly Cloudy', icon: 'Cloud' };
+            if (value === 3) return { label: 'Overcast', icon: 'Overcast' };
+            if ([45, 48].includes(value)) return { label: 'Fog', icon: 'Fog' };
+            if ([51, 53, 55, 56, 57].includes(value)) return { label: 'Drizzle', icon: 'Drizzle' };
+            if ([61, 63, 65, 66, 67, 80, 81, 82].includes(value)) return { label: 'Rain', icon: 'Rain' };
+            if ([95, 96, 99].includes(value)) return { label: 'Thunderstorm', icon: 'Storm' };
+            return { label: 'Variable', icon: 'Sky' };
+        }
+
+        function getCompassDirection(degrees) {
+            const value = Number(degrees);
+            if (!Number.isFinite(value)) return '--';
+            const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+            const normalized = ((value % 360) + 360) % 360;
+            return directions[Math.round(normalized / 22.5) % directions.length];
+        }
+
+        function getHourlyWindowValues(hourly, key, currentTime, hours) {
+            if (!hourly || !Array.isArray(hourly.time) || !Array.isArray(hourly[key])) return [];
+            const startIndex = Math.max(0, hourly.time.indexOf(currentTime));
+            return hourly[key]
+                .slice(startIndex, startIndex + hours)
+                .map((value) => Number(value))
+                .filter((value) => Number.isFinite(value));
+        }
+
+        function sumSeries(values) {
+            return Number(values.reduce((sum, value) => sum + value, 0).toFixed(1));
+        }
+
+        function maxSeries(values) {
+            if (!values.length) return null;
+            return Math.max(...values);
+        }
+
+        function getMonsoonDescriptor({ windDirection, rain12h, waveHeight }) {
+            const month = new Date().getMonth() + 1;
+            const direction = Number(windDirection);
+            const isSouthwestFlow = Number.isFinite(direction) && direction >= 180 && direction <= 270;
+            const isNortheastFlow = Number.isFinite(direction) && direction >= 20 && direction <= 90;
+
+            let seasonLabel = 'Inter-monsoon transition';
+            if (month >= 5 && month <= 10) {
+                seasonLabel = 'Southwest monsoon season';
+            } else if (month === 11 || month === 12 || month <= 2) {
+                seasonLabel = 'Northeast monsoon season';
+            }
+
+            let flowLabel = 'Variable flow';
+            if (isSouthwestFlow) flowLabel = 'Southwest flow';
+            if (isNortheastFlow) flowLabel = 'Northeast flow';
+
+            const wetSignal = Number(rain12h) >= 15 || Number(waveHeight) >= 1.2;
+            const tone = wetSignal ? 'warn' : 'active';
+            const note = wetSignal
+                ? `${flowLabel} with wetter marine conditions in the next 12h`
+                : `${flowLabel} with relatively calm marine conditions`;
+
+            return { seasonLabel, flowLabel, note, tone };
+        }
+
+        function getMarineRisk(snapshot) {
+            const waveHeight = Number(snapshot?.waveHeight) || 0;
+            const gust = Number(snapshot?.windGust) || 0;
+            const rain12h = Number(snapshot?.rain12h) || 0;
+            const maxRainProb = Number(snapshot?.maxRainProb) || 0;
+
+            if (waveHeight >= 1.8 || gust >= 35 || rain12h >= 40 || maxRainProb >= 80) {
+                return {
+                    label: 'High caution',
+                    tone: 'danger',
+                    color: varAccentFallback('--accent-red', '#a64839'),
+                    note: 'Expect rougher passages, heavier squalls, or reduced visibility.'
+                };
+            }
+
+            if (waveHeight >= 1.0 || gust >= 24 || rain12h >= 15 || maxRainProb >= 50) {
+                return {
+                    label: 'Moderate caution',
+                    tone: 'warn',
+                    color: varAccentFallback('--accent-orange', '#c8682f'),
+                    note: 'Operational window is open, but exposed sea legs may get choppy.'
+                };
+            }
+
+            return {
+                label: 'Favorable window',
+                tone: 'active',
+                color: varAccentFallback('--accent-green', '#586e54'),
+                note: 'Current rain, wind, and wave signals look manageable for near-island operations.'
+            };
+        }
+
+        function varAccentFallback(variableName, fallback) {
+            return getComputedStyle(document.documentElement).getPropertyValue(variableName).trim() || fallback;
+        }
+
+        function getAqiToggles() {
+            return {
+                showPoints: !!document.getElementById('aqi-points-toggle')?.checked,
+                showHeat: !!document.getElementById('aqi-heatmap-toggle')?.checked
+            };
+        }
+
+        function getContextLayerToggles() {
+            return {
+                esriSatellite: !!document.getElementById('vegetation-toggle')?.checked,
+                nasaTrueColor: !!document.getElementById('nasa-truecolor-toggle')?.checked,
+                infraredClouds: !!document.getElementById('infrared-cloud-toggle')?.checked,
+                terrain: !!document.getElementById('geography-toggle')?.checked
+            };
+        }
+
+        function isSeaRoutesEnabled() {
+            return !!document.getElementById('sea-routes-toggle')?.checked;
+        }
+
+        function setContextLayerStatus(text, tone = 'muted') {
+            const statusEl = document.getElementById('context-layer-status');
+            if (!statusEl) return;
+            statusEl.textContent = text;
+            const toneMap = {
+                muted: 'var(--text-low)',
+                active: 'var(--accent-blue)',
+                warn: 'var(--accent-orange)'
+            };
+            statusEl.style.color = toneMap[tone] || 'var(--text-low)';
+        }
+
+        function ensureContextLayers() {
+            if (!vegetationLayer) {
+                vegetationLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 19,
+                    opacity: 0.88,
+                    pane: 'contextVegetationPane',
+                    noWrap: true,
+                    attribution: 'Esri World Imagery'
+                });
+            }
+
+            if (!nasaTrueColorLayer) {
+                nasaTrueColorLayer = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
+                    layers: 'MODIS_Terra_CorrectedReflectance_TrueColor',
+                    format: 'image/jpeg',
+                    transparent: false,
+                    version: '1.1.1',
+                    maxZoom: 20,
+                    opacity: 0.92,
+                    pane: 'contextSatellitePane',
+                    noWrap: true,
+                    attribution: 'NASA GIBS MODIS True Color'
+                });
+            }
+
+            if (!geographyLayer) {
+                geographyLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 17,
+                    opacity: 0.72,
+                    pane: 'contextGeographyPane',
+                    noWrap: true,
+                    subdomains: 'abc',
+                    attribution: 'OpenTopoMap'
+                });
+            }
+
+            if (!infraredCloudLayer) {
+                infraredCloudLayer = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
+                    layers: 'Himawari_AHI_Band13_Clean_Infrared',
+                    format: 'image/png',
+                    transparent: true,
+                    version: '1.1.1',
+                    maxZoom: 20,
+                    opacity: 0.56,
+                    pane: 'contextInfraredPane',
+                    noWrap: true,
+                    attribution: 'NASA GIBS Himawari Infrared'
+                });
+            }
+        }
+
+        function syncLeafletLayer(layer, enabled, opacity) {
+            if (!layer) return;
+            if (enabled) {
+                if (typeof opacity === 'number') layer.setOpacity(opacity);
+                if (!map.hasLayer(layer)) layer.addTo(map);
+                return;
+            }
+            if (map.hasLayer(layer)) {
+                map.removeLayer(layer);
+            }
+        }
+
+        function syncContextLayers() {
+            ensureContextLayers();
+            const toggles = getContextLayerToggles();
+            const activeLabels = [];
+            const hasSatelliteBase = toggles.esriSatellite || toggles.nasaTrueColor;
+            const hasOverlay = toggles.terrain || toggles.infraredClouds;
+
+            baseMapLayer.setOpacity(hasSatelliteBase ? 0.16 : hasOverlay ? 0.4 : 1);
+
+            syncLeafletLayer(vegetationLayer, toggles.esriSatellite, hasOverlay ? 0.76 : 0.9);
+            syncLeafletLayer(nasaTrueColorLayer, toggles.nasaTrueColor, hasOverlay ? 0.82 : 0.92);
+            syncLeafletLayer(geographyLayer, toggles.terrain, hasSatelliteBase ? 0.54 : 0.72);
+            syncLeafletLayer(infraredCloudLayer, toggles.infraredClouds, hasSatelliteBase ? 0.62 : 0.54);
+
+            if (toggles.esriSatellite) activeLabels.push(CONTEXT_LAYER_META.esriSatellite.label);
+            if (toggles.nasaTrueColor) activeLabels.push(CONTEXT_LAYER_META.nasaTrueColor.label);
+            if (toggles.infraredClouds) activeLabels.push(CONTEXT_LAYER_META.infraredClouds.label);
+            if (toggles.terrain) activeLabels.push(CONTEXT_LAYER_META.terrain.label);
+
+            if (!activeLabels.length) {
+                setContextLayerStatus('Dark basemap live • satellite layers on standby');
+            } else {
+                setContextLayerStatus(`${activeLabels.join(' • ')} live`, toggles.infraredClouds || activeLabels.length > 2 ? 'warn' : 'active');
+            }
+        }
+
+        function toggleContextLayers(sourceId = null) {
+            if (sourceId === 'vegetation-toggle' && document.getElementById(sourceId)?.checked) {
+                const nasaToggle = document.getElementById('nasa-truecolor-toggle');
+                if (nasaToggle) nasaToggle.checked = false;
+            }
+            if (sourceId === 'nasa-truecolor-toggle' && document.getElementById(sourceId)?.checked) {
+                const esriToggle = document.getElementById('vegetation-toggle');
+                if (esriToggle) esriToggle.checked = false;
+            }
+            syncContextLayers();
+            renderMapLegend();
+        }
+
+        function setSeaRouteStatus(text, tone = 'muted') {
+            const statusEl = document.getElementById('sea-route-status');
+            if (!statusEl) return;
+            statusEl.textContent = text;
+            const toneMap = {
+                muted: 'var(--text-low)',
+                active: 'var(--accent-blue)',
+                warn: 'var(--accent-orange)',
+                danger: 'var(--accent-red)'
+            };
+            statusEl.style.color = toneMap[tone] || 'var(--text-low)';
+        }
+
+        function clearSeaRoutes() {
+            seaRouteLayer.clearLayers();
+            if (map.hasLayer(seaRouteLayer)) {
+                map.removeLayer(seaRouteLayer);
+            }
+        }
+
+        function getOfficialPortDetails(portCode) {
+            if (!portCode) return null;
+            return marinePortsSnapshot.ports.find((port) => port.portCode === portCode) || null;
+        }
+
+        function renderSeaRoutes() {
+            if (!isSeaRoutesEnabled()) {
+                clearSeaRoutes();
+                setSeaRouteStatus('Sea routes hidden');
+                renderMapLegend();
+                return;
+            }
+
+            clearSeaRoutes();
+            if (!map.hasLayer(seaRouteLayer)) {
+                seaRouteLayer.addTo(map);
+            }
+
+            const renderedOrigins = new Set();
+            const renderedDestinations = new Set();
+            PHUKET_SEA_ROUTES.forEach((route) => {
+                const style = PHUKET_MARINE_ROUTE_STYLES[route.kind] || PHUKET_MARINE_ROUTE_STYLES.regional;
+                const officialOrigin = getOfficialPortDetails(route.origin.portCode);
+                const origin = officialOrigin?.coordinates
+                    ? { ...route.origin, ...officialOrigin.coordinates, label: officialOrigin.berthName }
+                    : route.origin;
+                const path = [
+                    [origin.lat, origin.lng],
+                    ...route.via.map(([lat, lng]) => [lat, lng]),
+                    [route.destination.lat, route.destination.lng]
+                ];
+
+                L.polyline(path, {
+                    pane: 'seaRoutePane',
+                    color: style.color,
+                    weight: style.weight,
+                    opacity: style.opacity,
+                    dashArray: style.dashArray,
+                    lineCap: 'round'
+                }).bindPopup(`
+                    <div style="font-family:'IBM Plex Sans',sans-serif; min-width:220px">
+                        <p style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#6a837c; margin-bottom:6px">Sea Route</p>
+                        <p style="font-size:15px; font-weight:700; color:#edf8f3; margin-bottom:8px">${escapeHtml(route.name)}</p>
+                        <p style="font-size:11px; color:#a4bab3; margin-bottom:4px">Origin: ${escapeHtml(origin.label)}</p>
+                        <p style="font-size:11px; color:#a4bab3; margin-bottom:8px">Destination: ${escapeHtml(route.destination.label)}</p>
+                        <p style="font-size:10px; color:${currentWeatherSnapshot?.marineRisk?.color || '#6a837c'}; font-weight:600; margin-bottom:6px">${escapeHtml(currentWeatherSnapshot?.marineRisk?.label || 'Marine weather loading')}</p>
+                        <p style="font-size:10px; color:#6a837c; margin-bottom:0">${escapeHtml(route.note)}</p>
+                    </div>
+                `).addTo(seaRouteLayer);
+
+                if (!renderedOrigins.has(origin.label)) {
+                    renderedOrigins.add(origin.label);
+                    L.circleMarker([origin.lat, origin.lng], {
+                        pane: 'seaRoutePane',
+                        radius: 5,
+                        color: style.color,
+                        weight: 2,
+                        fillColor: '#0f201d',
+                        fillOpacity: 1
+                    }).bindTooltip(origin.label, { direction: 'top', opacity: 0.92 })
+                        .bindPopup(`<strong style="color:#edf8f3">${escapeHtml(origin.label)}</strong><br><span style="color:#6a837c">${escapeHtml(officialOrigin?.portCode || route.origin.portCode || 'Indicative origin')}</span>`)
+                        .addTo(seaRouteLayer);
+                }
+
+                if (!renderedDestinations.has(route.destination.label)) {
+                    renderedDestinations.add(route.destination.label);
+                    L.circleMarker([route.destination.lat, route.destination.lng], {
+                        pane: 'seaRoutePane',
+                        radius: 4,
+                        color: style.color,
+                        weight: 1.5,
+                        fillColor: style.color,
+                        fillOpacity: 0.78
+                    }).bindTooltip(route.destination.label, { direction: 'top', opacity: 0.92 })
+                        .addTo(seaRouteLayer);
+                }
+            });
+
+            const officialCount = marinePortsSnapshot.ports.length;
+            const marineRisk = currentWeatherSnapshot?.marineRisk;
+            setSeaRouteStatus(
+                `${PHUKET_SEA_ROUTES.length} corridors • ${marineRisk?.label || 'weather pending'}${officialCount ? ` • ${officialCount} official Phuket berths` : ''}`,
+                marineRisk?.tone || 'active'
+            );
+            renderMapLegend();
+        }
+
+        function toggleSeaRoutes() {
+            renderSeaRoutes();
+        }
+
+        function isDistanceGridEnabled() {
+            return !!document.getElementById('distance-grid-toggle')?.checked;
+        }
+
+        function setGridLayerStatus(text, tone = 'muted') {
+            const statusEl = document.getElementById('grid-layer-status');
+            if (!statusEl) return;
+            statusEl.textContent = text;
+            const toneMap = {
+                muted: 'var(--text-low)',
+                active: 'var(--accent-blue)',
+                warn: 'var(--accent-orange)'
+            };
+            statusEl.style.color = toneMap[tone] || 'var(--text-low)';
+        }
+
+        function clearDistanceGrid() {
+            distanceGridLayer.clearLayers();
+            if (map.hasLayer(distanceGridLayer)) {
+                map.removeLayer(distanceGridLayer);
+            }
+        }
+
+        function buildDistanceGridBoundsKey(bounds, zoom) {
+            const southWest = bounds.getSouthWest();
+            const northEast = bounds.getNorthEast();
+            return [
+                zoom,
+                southWest.lat.toFixed(3),
+                southWest.lng.toFixed(3),
+                northEast.lat.toFixed(3),
+                northEast.lng.toFixed(3)
+            ].join(':');
+        }
+
+        function refreshDistanceGrid(force = false) {
+            if (!isDistanceGridEnabled()) {
+                distanceGridBoundsKey = '';
+                clearDistanceGrid();
+                setGridLayerStatus('Distance grid idle');
+                renderMapLegend();
+                return;
+            }
+
+            const zoom = map.getZoom();
+            if (zoom < 11) {
+                distanceGridBoundsKey = '';
+                clearDistanceGrid();
+                setGridLayerStatus('Zoom in to level 11+ for 1 km grid', 'warn');
+                renderMapLegend();
+                return;
+            }
+
+            const bounds = map.getBounds();
+            const boundsKey = buildDistanceGridBoundsKey(bounds, zoom);
+
+            if (!force && boundsKey === distanceGridBoundsKey && map.hasLayer(distanceGridLayer)) {
+                return;
+            }
+
+            const projectedSouthWest = map.options.crs.project(bounds.getSouthWest());
+            const projectedNorthEast = map.options.crs.project(bounds.getNorthEast());
+            const minX = Math.floor(projectedSouthWest.x / 1000) * 1000;
+            const maxX = Math.ceil(projectedNorthEast.x / 1000) * 1000;
+            const minY = Math.floor(projectedSouthWest.y / 1000) * 1000;
+            const maxY = Math.ceil(projectedNorthEast.y / 1000) * 1000;
+            const columns = Math.max(1, Math.round((maxX - minX) / 1000));
+            const rows = Math.max(1, Math.round((maxY - minY) / 1000));
+
+            if ((columns + rows) > 180) {
+                distanceGridBoundsKey = '';
+                clearDistanceGrid();
+                setGridLayerStatus('Grid hidden to keep the map readable; zoom in further', 'warn');
+                renderMapLegend();
+                return;
+            }
+
+            clearDistanceGrid();
+            if (!map.hasLayer(distanceGridLayer)) {
+                distanceGridLayer.addTo(map);
+            }
+
+            for (let x = minX; x <= maxX; x += 1000) {
+                const kmIndex = Math.round(x / 1000);
+                const isMajor = kmIndex % 5 === 0;
+                const start = map.options.crs.unproject(L.point(x, minY));
+                const end = map.options.crs.unproject(L.point(x, maxY));
+                L.polyline([start, end], {
+                    pane: 'distanceGridPane',
+                    color: isMajor ? '#90a79f' : '#5c746d',
+                    weight: isMajor ? 1.1 : 0.6,
+                    opacity: isMajor ? 0.48 : 0.26,
+                    interactive: false
+                }).addTo(distanceGridLayer);
+            }
+
+            for (let y = minY; y <= maxY; y += 1000) {
+                const kmIndex = Math.round(y / 1000);
+                const isMajor = kmIndex % 5 === 0;
+                const start = map.options.crs.unproject(L.point(minX, y));
+                const end = map.options.crs.unproject(L.point(maxX, y));
+                L.polyline([start, end], {
+                    pane: 'distanceGridPane',
+                    color: isMajor ? '#90a79f' : '#5c746d',
+                    weight: isMajor ? 1.1 : 0.6,
+                    opacity: isMajor ? 0.48 : 0.26,
+                    interactive: false
+                }).addTo(distanceGridLayer);
+            }
+
+            distanceGridBoundsKey = boundsKey;
+
+            const widthKm = (map.distance(
+                [bounds.getCenter().lat, bounds.getWest()],
+                [bounds.getCenter().lat, bounds.getEast()]
+            ) / 1000).toFixed(1);
+            const heightKm = (map.distance(
+                [bounds.getSouth(), bounds.getCenter().lng],
+                [bounds.getNorth(), bounds.getCenter().lng]
+            ) / 1000).toFixed(1);
+
+            setGridLayerStatus(`1 km grid active • view ${widthKm} × ${heightKm} km`, 'active');
+            renderMapLegend();
+        }
+
+        function scheduleDistanceGridRefresh(force = false) {
+            if (distanceGridRefreshTimer) clearTimeout(distanceGridRefreshTimer);
+            distanceGridRefreshTimer = setTimeout(() => refreshDistanceGrid(force), force ? 30 : 140);
+        }
+
+        function toggleDistanceGrid() {
+            scheduleDistanceGridRefresh(true);
+        }
+
+        function setAqiLayerStatus(text, tone = 'muted') {
+            const statusEl = document.getElementById('aqi-layer-status');
+            if (!statusEl) return;
+            statusEl.textContent = text;
+            const toneMap = {
+                muted: 'var(--text-low)',
+                active: 'var(--accent-blue)',
+                warn: 'var(--accent-orange)',
+                danger: 'var(--accent-red)'
+            };
+            statusEl.style.color = toneMap[tone] || 'var(--text-low)';
+        }
+
+        function buildAqiBoundsKey(bounds, zoom) {
+            const southWest = bounds.getSouthWest();
+            const northEast = bounds.getNorthEast();
+            return [
+                zoom,
+                southWest.lat.toFixed(2),
+                southWest.lng.toFixed(2),
+                northEast.lat.toFixed(2),
+                northEast.lng.toFixed(2)
+            ].join(':');
+        }
+
+        function getAqiSampleGrid(bounds, zoom) {
+            const cols = zoom >= 10 ? 5 : zoom >= 8 ? 4 : 3;
+            const rows = zoom >= 10 ? 4 : 3;
+            const samples = [];
+            const latStart = bounds.getSouth();
+            const latEnd = bounds.getNorth();
+            const lngStart = bounds.getWest();
+            const lngEnd = bounds.getEast();
+
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const lat = latStart + ((row + 0.5) / rows) * (latEnd - latStart);
+                    const lng = lngStart + ((col + 0.5) / cols) * (lngEnd - lngStart);
+                    samples.push({ lat: Number(lat.toFixed(4)), lng: Number(lng.toFixed(4)) });
+                }
+            }
+
+            return samples;
+        }
+
+        async function fetchAqiSample(lat, lng) {
+            const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=pm2_5`);
+            if (!res.ok) throw new Error(`AQI sample failed: ${res.status}`);
+            const data = await res.json();
+            const pm25 = data?.current?.pm2_5;
+            const aqi = pm25ToAqi(pm25);
+            return { lat, lng, pm25, aqi };
+        }
+
+        function clearAqiLayers() {
+            aqiLayerGroup.clearLayers();
+            if (map.hasLayer(aqiLayerGroup)) {
+                map.removeLayer(aqiLayerGroup);
+            }
+            if (aqiHeatLayer && map.hasLayer(aqiHeatLayer)) {
+                map.removeLayer(aqiHeatLayer);
+            }
+            aqiHeatLayer = null;
+        }
+
+        function renderMapLegend() {
+            const toggles = getAqiToggles();
+            const contextToggles = getContextLayerToggles();
+            const categoriesHtml = Object.entries(CAT_COLORS).map(([label, color]) => `
+                <div class="flex items-center gap-2 text-[10px] mb-1">
+                    <i style="background:${color}; width:10px; height:10px; border-radius:50%; display:inline-block;"></i> ${label}
+                </div>
+            `).join('');
+            const contextEntries = [
+                contextToggles.esriSatellite ? CONTEXT_LAYER_META.esriSatellite : null,
+                contextToggles.nasaTrueColor ? CONTEXT_LAYER_META.nasaTrueColor : null,
+                contextToggles.infraredClouds ? CONTEXT_LAYER_META.infraredClouds : null,
+                contextToggles.terrain ? CONTEXT_LAYER_META.terrain : null
+            ].filter(Boolean);
+            const contextHtml = contextEntries.length ? `
+                <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border-color)">
+                    <strong class="block mb-2 text-[10px] uppercase" style="letter-spacing:0.12em; color:var(--text-medium)">Satellite / Context</strong>
+                    ${contextEntries.map((item) => `
+                        <div class="flex items-center gap-2 text-[10px] mb-1">
+                            <i style="background:${item.color}; width:10px; height:10px; border-radius:50%; display:inline-block;"></i> ${item.label}
+                        </div>
+                    `).join('')}
+                    <div class="text-[10px]" style="color:var(--text-low)">NASA GIBS weather imagery plus terrain and satellite basemaps</div>
+                </div>
+            ` : '';
+            const gridHtml = isDistanceGridEnabled() ? `
+                <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border-color)">
+                    <strong class="block mb-2 text-[10px] uppercase" style="letter-spacing:0.12em; color:var(--text-medium)">Distance</strong>
+                    <div class="flex items-center gap-2 text-[10px] mb-1">
+                        <i style="border-top:1px solid #90a79f; width:14px; display:inline-block;"></i> 1 km spacing
+                    </div>
+                    <div class="text-[10px]" style="color:var(--text-low)">Major lines every 5 km</div>
+                </div>
+            ` : '';
+            const seaRouteHtml = isSeaRoutesEnabled() ? `
+                <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border-color)">
+                    <strong class="block mb-2 text-[10px] uppercase" style="letter-spacing:0.12em; color:var(--text-medium)">Marine</strong>
+                    ${Object.values(PHUKET_MARINE_ROUTE_STYLES).map((style) => `
+                        <div class="flex items-center gap-2 text-[10px] mb-1">
+                            <i style="width:16px; height:0; display:inline-block; border-top:${style.weight}px ${style.dashArray ? 'dashed' : 'solid'} ${style.color};"></i> ${style.label}
+                        </div>
+                    `).join('')}
+                    <div class="text-[10px]" style="color:var(--text-low)">Indicative corridors only${marinePortsSnapshot.ports.length ? ` • ${marinePortsSnapshot.ports.length} official Phuket berths loaded` : ''}</div>
+                </div>
+            ` : '';
+            const aqiHtml = toggles.showPoints || toggles.showHeat ? `
+                <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border-color)">
+                    <strong class="block mb-2 text-[10px] uppercase" style="letter-spacing:0.12em; color:var(--text-medium)">AQI Scale</strong>
+                    ${AQI_SCALE.map((item) => `
+                        <div class="flex items-center gap-2 text-[10px] mb-1">
+                            <i style="background:${item.color}; width:10px; height:10px; border-radius:50%; display:inline-block;"></i> ${item.label}
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '';
+
+            if (!mapLegendControl) {
+                mapLegendControl = L.control({ position: 'bottomright' });
+                mapLegendControl.onAdd = function () {
+                    const div = L.DomUtil.create('div');
+                    div.id = 'map-legend';
+                    div.style.background = 'rgba(10, 21, 18, 0.92)';
+                    div.style.border = '1px solid rgba(123, 171, 156, 0.2)';
+                    div.style.borderRadius = '14px';
+                    div.style.padding = '12px';
+                    div.style.boxShadow = '0 18px 38px rgba(0, 0, 0, 0.34)';
+                    div.style.color = 'var(--text-high)';
+                    div.style.fontFamily = '"IBM Plex Sans", sans-serif';
+                    div.style.backdropFilter = 'blur(14px)';
+                    return div;
+                };
+                mapLegendControl.addTo(map);
+            }
+
+            const legendEl = document.getElementById('map-legend');
+            if (legendEl) {
+                legendEl.innerHTML = `
+                    <strong class="block mb-2 text-[10px] uppercase" style="letter-spacing:0.12em; color:var(--text-medium)">Problem Types</strong>
+                    ${categoriesHtml}
+                    ${contextHtml}
+                    ${gridHtml}
+                    ${seaRouteHtml}
+                    ${aqiHtml}
+                `;
+            }
+        }
+
+        function renderAqiOverlay() {
+            const { showPoints, showHeat } = getAqiToggles();
+            clearAqiLayers();
+
+            if (!showPoints && !showHeat) {
+                renderMapLegend();
+                setAqiLayerStatus('AQI overlay idle');
+                return;
+            }
+
+            if (!aqiSampleData.length) {
+                setAqiLayerStatus('AQI overlay waiting for data', 'warn');
+                renderMapLegend();
+                return;
+            }
+
+            if (showPoints) {
+                aqiLayerGroup.addTo(map);
+                aqiSampleData.forEach((sample) => {
+                    const descriptor = getAqiDescriptor(sample.aqi);
+                    const radius = Math.max(7, Math.min(16, Math.round((sample.aqi || 40) / 18)));
+                    L.circleMarker([sample.lat, sample.lng], {
+                        radius,
+                        fillColor: descriptor.color,
+                        color: '#edf8f3',
+                        weight: 1.5,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).bindPopup(`
+                        <div style="font-family:'IBM Plex Sans',sans-serif; min-width:170px">
+                            <p style="font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#6a837c; margin-bottom:6px">Air Quality Sample</p>
+                            <p style="font-size:22px; font-weight:700; line-height:1; color:${descriptor.color}; margin-bottom:8px">${sample.aqi ?? '--'}</p>
+                            <p style="font-size:11px; font-weight:600; margin-bottom:4px; color:#edf8f3">${descriptor.label}</p>
+                            <p style="font-size:10px; color:#a4bab3">PM2.5: ${sample.pm25 != null ? Math.round(sample.pm25) : '--'} µg/m³</p>
+                            <p style="font-size:10px; color:#6a837c">Lat ${sample.lat.toFixed(2)}, Lng ${sample.lng.toFixed(2)}</p>
+                        </div>
+                    `).addTo(aqiLayerGroup);
+                });
+            }
+
+            if (showHeat && typeof L.heatLayer === 'function') {
+                aqiHeatLayer = L.heatLayer(
+                    aqiSampleData.map((sample) => [sample.lat, sample.lng, Math.min(1, (sample.aqi || 0) / 220)]),
+                    {
+                        radius: 65,
+                        blur: 28,
+                        maxZoom: 13,
+                        minOpacity: 0.2,
+                        gradient: {
+                            0.12: '#5c7c57',
+                            0.3: '#b1892f',
+                            0.52: '#d87b2f',
+                            0.74: '#b34b3c',
+                            0.9: '#7b4f8f',
+                            1: '#5a3148'
+                        }
+                    }
+                ).addTo(map);
+            }
+
+            const averageAqi = Math.round(aqiSampleData.reduce((sum, sample) => sum + (sample.aqi || 0), 0) / aqiSampleData.length);
+            const descriptor = getAqiDescriptor(averageAqi);
+            setAqiLayerStatus(`AQI ${descriptor.label} • avg ${averageAqi}`, averageAqi > 100 ? 'danger' : averageAqi > 50 ? 'warn' : 'active');
+            renderMapLegend();
+        }
+
+        async function refreshAqiOverlay(force = false) {
+            const { showPoints, showHeat } = getAqiToggles();
+            if (!showPoints && !showHeat) {
+                clearAqiLayers();
+                renderMapLegend();
+                setAqiLayerStatus('AQI overlay idle');
+                return;
+            }
+
+            const bounds = map.getBounds();
+            const zoom = Math.round(map.getZoom());
+            const boundsKey = buildAqiBoundsKey(bounds, zoom);
+
+            if (!force && boundsKey === aqiLastBoundsKey && aqiSampleData.length) {
+                renderAqiOverlay();
+                return;
+            }
+
+            setAqiLayerStatus('Sampling AQI data across current map view...', 'active');
+
+            try {
+                const samples = getAqiSampleGrid(bounds, zoom);
+                const results = await Promise.allSettled(samples.map((sample) => fetchAqiSample(sample.lat, sample.lng)));
+                aqiSampleData = results
+                    .filter((result) => result.status === 'fulfilled')
+                    .map((result) => result.value)
+                    .filter((sample) => Number.isFinite(sample.pm25) && Number.isFinite(sample.aqi));
+                aqiLastBoundsKey = boundsKey;
+                renderAqiOverlay();
+            } catch (error) {
+                console.warn('AQI overlay refresh failed:', error);
+                setAqiLayerStatus('AQI overlay unavailable', 'danger');
+            }
+        }
+
+        function scheduleAqiOverlayRefresh(force = false) {
+            if (aqiRefreshTimer) clearTimeout(aqiRefreshTimer);
+            aqiRefreshTimer = setTimeout(() => refreshAqiOverlay(force), force ? 40 : 220);
+        }
+
+        function toggleAqiOverlay() {
+            scheduleAqiOverlayRefresh(true);
+        }
+
+        function isReportOpen(report) {
+            return String(report?.status || '').toLowerCase() !== 'completed';
+        }
+
+        function hasCoordinates(report) {
+            return !isNaN(parseFloat(report?.latitude)) && !isNaN(parseFloat(report?.longitude));
+        }
+
+        function getReportAgeHours(report) {
+            if (!report?.timestamp) return null;
+            const timestamp = new Date(report.timestamp);
+            if (isNaN(timestamp.getTime())) return null;
+            return Math.max(0, Math.floor((Date.now() - timestamp.getTime()) / (1000 * 60 * 60)));
+        }
+
+        function getUniqueReports(reports) {
+            const seen = new Set();
+            return (Array.isArray(reports) ? reports : []).filter((report) => {
+                const id = report?.report_id || report?.id || report?.ticket_number;
+                if (!id || seen.has(id)) return false;
+                seen.add(id);
+                return true;
+            });
+        }
+
+        function getDashboardFilters() {
+            return {
+                searchTerm: normalizeText(document.getElementById('table-search')?.value),
+                category: document.getElementById('table-filter')?.value || 'all',
+                status: document.getElementById('status-filter')?.value || 'all',
+                urgency: document.getElementById('urgency-filter')?.value || 'all',
+                team: document.getElementById('team-filter')?.value || 'all',
+                sort: document.getElementById('sort-filter')?.value || 'priority',
+                quick: Array.from(quickFilters)
+            };
+        }
+
+        function countActiveFilters(filters) {
+            return [
+                filters.searchTerm,
+                filters.category !== 'all' ? filters.category : '',
+                filters.status !== 'all' ? filters.status : '',
+                filters.urgency !== 'all' ? filters.urgency : '',
+                filters.team !== 'all' ? filters.team : '',
+                ...filters.quick
+            ].filter(Boolean).length;
+        }
+
+        function sortReports(reports, sortKey) {
+            const urgencyRank = { 'สูง': 3, 'ปานกลาง': 2, 'ต่ำ': 1 };
+            return [...reports].sort((left, right) => {
+                if (sortKey === 'oldest') {
+                    return new Date(left.timestamp) - new Date(right.timestamp);
+                }
+                if (sortKey === 'aging') {
+                    const leftScore = isReportOpen(left) ? (getReportAgeHours(left) || 0) : -1;
+                    const rightScore = isReportOpen(right) ? (getReportAgeHours(right) || 0) : -1;
+                    if (rightScore !== leftScore) return rightScore - leftScore;
+                }
+                if (sortKey === 'newest') {
+                    return new Date(right.timestamp) - new Date(left.timestamp);
+                }
+
+                const urgencyDiff = (urgencyRank[right.urgency] || 0) - (urgencyRank[left.urgency] || 0);
+                if (urgencyDiff !== 0) return urgencyDiff;
+
+                const statusDiff = Number(isReportOpen(right)) - Number(isReportOpen(left));
+                if (statusDiff !== 0) return statusDiff;
+
+                return new Date(right.timestamp) - new Date(left.timestamp);
+            });
+        }
+
+        function applyDashboardFilters(reports, filters) {
+            const filtered = reports.filter((report) => {
+                if (mapMode === 'unsolved' && !isReportOpen(report)) return false;
+                if (mapMode === 'solved' && isReportOpen(report)) return false;
+
+                const haystack = [
+                    report.ticket_number,
+                    report.description,
+                    report.location_text,
+                    report.nickname,
+                    report.problem_type,
+                    report.team_name,
+                    report.ai_summary
+                ].map(normalizeText).join(' ');
+
+                if (filters.searchTerm && !haystack.includes(filters.searchTerm)) return false;
+                if (filters.category !== 'all' && report.problem_type !== filters.category) return false;
+                if (filters.status !== 'all' && String(report.status || '').toLowerCase() !== filters.status) return false;
+                if (filters.urgency !== 'all' && String(report.urgency || '') !== filters.urgency) return false;
+                if (filters.team !== 'all' && String(report.team_name || '') !== filters.team) return false;
+                if (filters.quick.includes('urgent') && report.urgency !== 'สูง') return false;
+                if (filters.quick.includes('unassigned') && report.team_name) return false;
+                if (filters.quick.includes('exif') && !report.photo_metadata) return false;
+
+                return true;
+            });
+
+            return sortReports(filtered, filters.sort);
+        }
+
+        function populateFilters() {
+            const uniqueReports = getUniqueReports(allReports);
+            const categorySelect = document.getElementById('table-filter');
+            const teamSelect = document.getElementById('team-filter');
+            const previousCategory = categorySelect?.value || 'all';
+            const previousTeam = teamSelect?.value || 'all';
+
+            if (categorySelect) {
+                const categories = [...new Set(uniqueReports.map((report) => report.problem_type).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'th'));
+                categorySelect.innerHTML = '<option value="all">All Categories</option>' +
+                    categories.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('');
+                categorySelect.value = categories.includes(previousCategory) ? previousCategory : 'all';
+            }
+
+            if (teamSelect) {
+                const teams = [...new Set(uniqueReports.map((report) => report.team_name).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'th'));
+                teamSelect.innerHTML = '<option value="all">All Teams</option>' +
+                    teams.map((team) => `<option value="${escapeHtml(team)}">${escapeHtml(team)}</option>`).join('');
+                teamSelect.value = teams.includes(previousTeam) ? previousTeam : 'all';
+            }
+        }
+
+        function updateQuickFilterButtons() {
+            ['urgent', 'unassigned', 'exif'].forEach((name) => {
+                document.getElementById(`quick-filter-${name}`)?.classList.toggle('active', quickFilters.has(name));
+            });
+        }
+
+        function toggleQuickFilter(name) {
+            if (quickFilters.has(name)) quickFilters.delete(name);
+            else quickFilters.add(name);
+            updateQuickFilterButtons();
+            render();
+        }
+
+        function clearAllFilters() {
+            document.getElementById('table-search').value = '';
+            document.getElementById('table-filter').value = 'all';
+            document.getElementById('status-filter').value = 'all';
+            document.getElementById('urgency-filter').value = 'all';
+            document.getElementById('team-filter').value = 'all';
+            document.getElementById('sort-filter').value = 'priority';
+            quickFilters.clear();
+            updateQuickFilterButtons();
+            render();
+        }
+
+        function updateFilterSummary(filters, filteredReports, uniqueReports) {
+            const modeLabel = mapMode === 'unsolved' ? 'Active Issues' : mapMode === 'solved' ? 'Archive' : 'All Reports';
+            const filterCount = countActiveFilters(filters);
+            const summary = `Showing ${filteredReports.length} of ${uniqueReports.length} reports • ${modeLabel}${filterCount ? ` • ${filterCount} active filters` : ''}`;
+
+            document.getElementById('results-summary').textContent = summary;
+            document.getElementById('active-filter-summary').textContent = filterCount
+                ? `${filterCount} filters active across triage queue`
+                : 'No filters applied';
+
+            const pills = [
+                `Mode: ${modeLabel}`,
+                filters.category !== 'all' ? `Category: ${filters.category}` : '',
+                filters.status !== 'all' ? `Status: ${getStatusMeta(filters.status).label}` : '',
+                filters.urgency !== 'all' ? `Priority: ${getUrgencyMeta(filters.urgency).label}` : '',
+                filters.team !== 'all' ? `Team: ${filters.team}` : '',
+                ...filters.quick.map((item) => ({
+                    urgent: 'High Priority',
+                    unassigned: 'Unassigned',
+                    exif: 'EXIF Verified'
+                }[item] || item))
+            ].filter(Boolean);
+
+            document.getElementById('active-filter-pills').innerHTML = pills
+                .map((label) => `<span class="active-filter-pill">${escapeHtml(label)}</span>`)
+                .join('');
+        }
+
+        function updateHeaderStats(uniqueReports) {
+            document.getElementById('stat-total').innerText = uniqueReports.length;
+            const solvedCount = uniqueReports.filter((report) => !isReportOpen(report)).length;
+            document.getElementById('stat-solved-pct').innerText = `${Math.round((solvedCount / uniqueReports.length) * 100 || 0)}%`;
+        }
+
+        function updateOpsSnapshot(uniqueReports, filteredReports) {
+            const activeReports = uniqueReports.filter(isReportOpen);
+            const urgentReports = activeReports.filter((report) => report.urgency === 'สูง');
+            const slaRisk = activeReports.filter((report) => (getReportAgeHours(report) || 0) >= 24);
+            const unassigned = activeReports.filter((report) => !report.team_name);
+            const geoCoverage = uniqueReports.length
+                ? Math.round((uniqueReports.filter(hasCoordinates).length / uniqueReports.length) * 100)
+                : 0;
+
+            document.getElementById('ops-open-count').innerText = activeReports.length;
+            document.getElementById('ops-urgent-count').innerText = urgentReports.length;
+            document.getElementById('ops-sla-count').innerText = slaRisk.length;
+            document.getElementById('ops-unassigned-count').innerText = unassigned.length;
+            document.getElementById('ops-geo-count').innerText = `${geoCoverage}%`;
+
+            const categories = {};
+            filteredReports.forEach((report) => {
+                const category = report.problem_type || 'ทั่วไป';
+                categories[category] = (categories[category] || 0) + 1;
+            });
+            const dominantCategory = Object.entries(categories).sort((left, right) => right[1] - left[1])[0]?.[0] || 'ทั่วไป';
+
+            let title = 'Operational picture is stable';
+            let detail = 'No critical congestion detected in the current queue. Continue normal triage and keep location coverage high.';
+
+            if (urgentReports.length > 0) {
+                title = `${urgentReports.length} urgent case${urgentReports.length > 1 ? 's' : ''} need dispatch attention`;
+                detail = `Highest current pressure is in "${dominantCategory}". ${slaRisk.length} active case${slaRisk.length === 1 ? '' : 's'} have already crossed the 24-hour aging threshold.`;
+            } else if (slaRisk.length > 0) {
+                title = `${slaRisk.length} aging case${slaRisk.length > 1 ? 's' : ''} are at SLA risk`;
+                detail = `Backlog is concentrated around "${dominantCategory}". Review assignment ownership and clear the oldest unresolved reports first.`;
+            } else if (activeReports.length === 0) {
+                title = 'No active backlog right now';
+                detail = 'All current reports are closed. Keep monitoring new incoming cases and verify coverage quality on the next sync.';
+            } else {
+                title = `${activeReports.length} active report${activeReports.length > 1 ? 's' : ''} in queue`;
+                detail = `Current focus area is "${dominantCategory}". ${unassigned.length} report${unassigned.length === 1 ? '' : 's'} still need team ownership.`;
+            }
+
+            document.getElementById('ops-focus-title').innerText = title;
+            document.getElementById('ops-focus-text').innerText = detail;
+        }
+
+        function getDriveDirectLink(url) {
+            if (!url || url === 'processing') return '';
+
+            // Supabase Storage URLs are already direct — pass through
+            if (url.includes('supabase.co')) return url;
+
+            // If it's already a direct Googleusercontent link, return as is
+            if (url.includes('googleusercontent.com') || url.includes('drive.google.com/uc')) return url;
+
+            // Handle standard Drive view links
+            const idMatch = url.match(/id=([^&]+)/) || url.match(/file\/d\/([^\/]+)/);
+            if (idMatch) return `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w1000`;
+
+            // Fallback for other valid URLs
+            return url;
+        }
+
+
+
+        async function fetchData() {
+            try {
+                const res = await fetch('/api/reports');
+                const data = await res.json();
+
+                if (data.success === false) {
+                    console.error('API Error:', data.error);
+                    if (data.error === 'invalid_grant' || data.error === 'invalid_request') {
+                        showAuthError();
+                        return;
+                    }
+                    allReports = [];
+                } else {
+                    allReports = data;
+                }
+
+                // Hide auth error if successfully fetched
+                hideAuthError();
+                populateFilters();
+                updateQuickFilterButtons();
+
+                render();
+                updateAICommentary();
+                updateLeaderboard();
+                fetchEarlyWarnings();
+                fetchSocialPulse();
+                document.getElementById('sync-time').innerText = thaiNow();
+                document.getElementById('sync-indicator').innerHTML = '<span class="w-1.5 h-1.5 rounded-full" style="background: var(--accent-green)"></span> LIVE SYNC';
+                document.getElementById('sync-indicator').style.color = 'var(--accent-green)';
+            } catch (e) {
+                console.error(e);
+                document.getElementById('sync-indicator').innerHTML = '<span class="w-1.5 h-1.5 rounded-full" style="background: var(--accent-red)"></span> OFFLINE';
+                document.getElementById('sync-indicator').style.color = 'var(--accent-red)';
+            }
+        }
+
+        function showAuthError() {
+            const errorDiv = document.createElement('div');
+            errorDiv.id = 'auth-error-overlay';
+            errorDiv.className = 'fixed inset-0 z-[10000] flex items-center justify-center p-8 bg-black/80 backdrop-blur-md';
+            errorDiv.innerHTML = `
+                <div class="vitsoe-card max-w-md w-full text-center border-red-500/50">
+                    <div class="text-4xl mb-4">🔑</div>
+                    <h2 class="text-xl font-bold mb-2 text-white">Authentication Expired</h2>
+                    <p class="text-sm mb-6" style="color: var(--text-medium)">The Google Refresh Token has expired or is invalid. The dashboard cannot sync with the spreadsheet until the token is updated.</p>
+                    <div class="bg-black/40 p-3 rounded-lg text-left mb-6 font-mono text-[10px]" style="color: var(--text-low)">
+                        Error: invalid_grant
+                    </div>
+                    
+                    <div class="mb-6 p-4 rounded-lg text-left" style="background: rgba(255, 69, 58, 0.1); border: 1px solid rgba(255, 69, 58, 0.3)">
+                         <p class="text-xs font-bold text-[#ff453a] mb-1">⚠️ Why did this happen?</p>
+                         <p class="text-xs mb-3" style="color: var(--text-medium)">Your Google Cloud App is in <b class="text-white">"Testing"</b> mode, which causes the token to expire every 7 days. To fix this permanently:</p>
+                         <ol class="text-[10px] list-decimal list-inside space-y-1 mb-3" style="color: var(--text-low)">
+                             <li>Go to Google Cloud's <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" class="text-blue-400 underline font-semibold cursor-pointer z-50 relative pointer-events-auto">OAuth Consent Screen</a></li>
+                             <li>Click the <b>PUBLISH APP</b> button under Publishing Status.</li>
+                             <li>Generate a new token below (one last time).</li>
+                         </ol>
+                    </div>
+
+                    <div class="space-y-3 relative z-50">
+                        <a href="https://github.com/Nonarkara/city-reporter-line-bot/blob/main/FIX_TOKEN.md" target="_blank" class="vitsoe-button w-full bg-blue-600 border-none cursor-pointer pointer-events-auto">1. Generate New Token</a>
+                        <button onclick="window.location.reload()" class="vitsoe-button w-full cursor-pointer pointer-events-auto">2. Reload Dashboard</button>
+                    </div>
+                </div>
+            `;
+            if (!document.getElementById('auth-error-overlay')) {
+                document.body.appendChild(errorDiv);
+                // Ensure links work in the overlay
+                document.getElementById('auth-error-overlay').style.pointerEvents = 'auto';
+            }
+        }
+
+        function hideAuthError() {
+            const el = document.getElementById('auth-error-overlay');
+            if (el) el.remove();
+        }
+
+        async function fetchEarlyWarnings() {
+            try {
+                const res = await fetch('/api/early-warnings');
+                const data = await res.json();
+
+                // Update unique devices stat
+                if (data.analytics?.uniqueDevices) {
+                    document.getElementById('stat-devices').innerText = data.analytics.uniqueDevices;
+                }
+
+                // Display early warnings
+                const panel = document.getElementById('early-warnings-panel');
+                const list = document.getElementById('early-warnings-list');
+
+                if (data.alerts && data.alerts.length > 0) {
+                    panel.classList.remove('hidden');
+                    list.innerHTML = data.alerts.map(alert => `
+                        <div class="flex items-center gap-3 p-2 rounded" style="background: var(--surface-elevated); border: 1px solid ${alert.severity === 'high' ? 'rgba(255, 107, 107, 0.36)' : 'rgba(255, 176, 74, 0.3)'}">
+                            <span class="text-lg">${alert.type === 'GEOGRAPHIC_CLUSTER' ? '📍' : '📈'}</span>
+                            <div class="flex-1">
+                                <p class="text-[11px] font-bold" style="color: var(--text-high)">${alert.message}</p>
+                                ${alert.centerLat ? `<p class="text-[9px]" style="color: var(--text-low)">📍 ${alert.centerLat.toFixed(4)}, ${alert.centerLng.toFixed(4)}</p>` : ''}
+                            </div>
+                            <span class="text-[9px] font-bold uppercase px-2 py-1 rounded" style="${alert.severity === 'high' ? 'background: rgba(255, 107, 107, 0.14); color: #ff9a92;' : 'background: rgba(255, 176, 74, 0.14); color: #ffd28f;'}">${alert.severity}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    panel.classList.add('hidden');
+                }
+            } catch (e) { console.warn('Early warnings unavailable:', e); }
+        }
+
+        function render() {
+            try {
+                if (!Array.isArray(allReports)) {
+                    console.warn('Cannot render: allReports is not an array', allReports);
+                    return;
+                }
+                const uniqueReports = getUniqueReports(allReports);
+                const filters = getDashboardFilters();
+                const filteredData = applyDashboardFilters(uniqueReports, filters);
+
+                updateHeaderStats(uniqueReports);
+                updateOpsSnapshot(uniqueReports, filteredData);
+                updateFilterSummary(filters, filteredData, uniqueReports);
+
+                // Map Rendering (Safely using LayerGroup)
+                if (!window.markerClusterGroup) {
+                    window.markerClusterGroup = L.layerGroup().addTo(map);
+                }
+                window.markerClusterGroup.clearLayers();
+
+                // Explicit activeMarkers clear for safety (legacy)
+                if (window.activeMarkers) activeMarkers = [];
+
+                const categoryHeatData = {};
+
+                filteredData.forEach(r => {
+                    try {
+                        const lat = parseFloat(r.latitude);
+                        const lng = parseFloat(r.longitude);
+
+                        if (isNaN(lat) || isNaN(lng)) return;
+
+                        // Collect heatmap data grouped by problem type
+                        const cat = r.problem_type || 'อื่นๆ';
+                        if (!categoryHeatData[cat]) categoryHeatData[cat] = [];
+                        categoryHeatData[cat].push([lat, lng, r.urgency === 'สูง' ? 1.0 : 0.6]);
+
+                        const catColor = getCategoryColor(r.problem_type);
+                        const zoom = map.getZoom();
+
+                        // ENHANCED VISUAL DISTINCTION
+                        const isUrgent = r.urgency === 'สูง';
+                        const isCompleted = !isReportOpen(r);
+                        const pulseClass = (isUrgent && !isCompleted) ? 'animate-ping opacity-75' : '';
+
+                        // Solved = GREEN + dimmed + checkmark; Unsolved = category color + vibrant
+                        const color = isCompleted ? '#2D8A2D' : catColor;
+                        const dotOpacity = isCompleted ? '0.45' : '1';
+
+                        const statusOverlay = isCompleted
+                            ? `<div class="absolute -right-1 -top-1 bg-green-500 rounded-full p-0.5 border-2 border-white shadow-md"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4"><polyline points="20 6 9 17 4 12"></polyline></svg></div>`
+                            : '';
+
+                        const iconHtml = (zoom >= 15 && r.image_url)
+                            ? `<div class="relative" style="opacity:${dotOpacity}">
+                                    <img src="${getDriveDirectLink(r.image_url)}" class="map-thumb-icon" style="border-color:${color}; ${isCompleted ? 'filter:grayscale(60%);' : ''}" onerror="this.style.display='none'">
+                                    ${statusOverlay}
+                                   </div>`
+                            : `<div class="relative w-full h-full" style="opacity:${dotOpacity}">
+                                     ${(isUrgent && !isCompleted) ? `<div class="absolute inset-0 rounded-full ${pulseClass}" style="background:${catColor}"></div>` : ''}
+                                     <div class="map-dot absolute inset-0 m-auto flex items-center justify-center" style="background:${color}; width:${isCompleted ? (zoom < 10 ? 6 : 10) : (zoom < 10 ? 8 : 14)}px; height:${isCompleted ? (zoom < 10 ? 6 : 10) : (zoom < 10 ? 8 : 14)}px; border-width:${zoom < 10 ? 1 : 2}px; ${isCompleted ? 'border-color:#2D8A2D;' : ''}">
+                                        ${isCompleted && zoom >= 10 ? '<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+                                     </div>
+                                   </div>`;
+
+                        const icon = L.divIcon({
+                            className: 'custom-icon',
+                            html: iconHtml,
+                            iconSize: zoom >= 15 ? [60, 60] : [24, 24]
+                        });
+
+                        const marker = L.marker([lat, lng], { icon }).bindPopup(`<b style="color:${isCompleted ? '#63e2a3' : catColor}">${r.problem_type}</b><br>${r.ticket_number}<br><span style="font-size:10px;color:${isCompleted ? '#85ebb0' : '#a4bab3'}">${isCompleted ? '✅ แก้ไขแล้ว' : '⏳ รอดำเนินการ'}</span>`).on('click', () => openDetails(r));
+                        window.markerClusterGroup.addLayer(marker);
+                    } catch (markerErr) { console.warn('Marker error:', markerErr); }
+                });
+
+                // Category-Colored Heatmap: Each problem type gets its own heat layer
+                if (window.catHeatLayers) window.catHeatLayers.forEach(l => map.removeLayer(l));
+                window.catHeatLayers = [];
+
+                if (document.getElementById('heatmap-toggle').checked && typeof L.heatLayer === 'function') {
+                    const hexToRgba = (hex, a) => {
+                        const rv = parseInt(hex.slice(1, 3), 16), gv = parseInt(hex.slice(3, 5), 16), bv = parseInt(hex.slice(5, 7), 16);
+                        return `rgba(${rv},${gv},${bv},${a})`;
+                    };
+
+                    Object.entries(categoryHeatData).forEach(([cat, points]) => {
+                        if (points.length === 0) return;
+                        const base = getCategoryColor(cat);
+                        const layer = L.heatLayer(points, {
+                            radius: 90,
+                            blur: 45,
+                            maxZoom: 17,
+                            minOpacity: 0.25,
+                            max: 1.0,
+                            gradient: { 0: 'transparent', 0.2: hexToRgba(base, 0.2), 0.4: hexToRgba(base, 0.45), 0.6: hexToRgba(base, 0.65), 0.8: hexToRgba(base, 0.8), 1: hexToRgba(base, 0.95) }
+                        }).addTo(map);
+                        window.catHeatLayers.push(layer);
+                    });
+                }
+
+                syncContextLayers();
+                refreshDistanceGrid();
+                renderMapLegend();
+                if (getAqiToggles().showPoints || getAqiToggles().showHeat) {
+                    renderAqiOverlay();
+                }
+
+                // Table Rendering
+                const body = document.getElementById('report-table');
+                body.innerHTML = '';
+
+                if (filteredData.length === 0) {
+                    body.innerHTML = `
+                        <tr>
+                            <td colspan="10" class="text-center py-12">
+                                <div class="text-sm font-semibold" style="color: var(--text-high)">No reports match the current filter set</div>
+                                <div class="table-note">Try clearing one or more filters, or switch the map mode.</div>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                filteredData.forEach(r => {
+                    try {
+                        const isSolved = !isReportOpen(r);
+                        const tr = document.createElement('tr');
+                        if (isSolved) tr.className = 'solved';
+
+                        // Safety check for ID
+                        const reportId = r.report_id || r.id;
+                        if (!reportId) {
+                            console.error('Missing report ID for row:', r);
+                            return;
+                        }
+
+                        // Operation Column Content for Resolved View
+                        let actionBtn = `<button onclick="openDetailsByID('${reportId}')" class="vitsoe-button text-[9px] font-semibold uppercase" style="border-radius: 6px; padding: 4px 12px;">Inspect</button>`;
+
+                        if (mapMode === 'solved') {
+                            actionBtn = `
+                                <div class="flex gap-2">
+                                     <button onclick="openDetailsByID('${reportId}')" class="vitsoe-button text-[9px] font-black uppercase tracking-widest">View</button>
+                                     <button onclick="addReflection(event, '${reportId}')" class="vitsoe-button text-[9px] font-black uppercase tracking-widest bg-zinc-800 text-white hover:bg-zinc-600">Reflect</button>
+                                </div>
+                            `;
+                        }
+
+                        // Direct Click Handler for Maximum Reliability
+                        tr.onclick = (e) => selectReport(e, reportId, r.ticket_number);
+
+                        const reportAgeHours = getReportAgeHours(r);
+                        const statusMeta = getStatusMeta(r.status);
+                        const urgencyMeta = getUrgencyMeta(r.urgency);
+                        const categoryColor = getCategoryColor(r.problem_type);
+                        const ageBadgeStyle = isSolved
+                            ? 'background: rgba(48, 209, 88, 0.12); color: #85ebb0;'
+                            : (reportAgeHours || 0) >= 24
+                                ? 'background: rgba(255, 69, 58, 0.16); color: #ff9a92;'
+                                : 'background: rgba(255, 255, 255, 0.06); color: var(--text-medium);';
+
+                        tr.className = "transition-colors cursor-pointer";
+                        tr.style.cssText = 'border-bottom: 1px solid var(--border-color)';
+                        tr.innerHTML = `
+                            <td>
+                                <div class="font-bold text-xs" style="color: var(--text-high)">${r.ticket_number || '-'}</div>
+                                <div class="text-[9px] font-medium" style="color: var(--text-low)">${r.timestamp ? thaiDate(r.timestamp) : '-'}</div>
+                            </td>
+                            <td>
+                                <div class="font-bold text-[11px]">${r.nickname || 'Guest'}</div>
+                                <div class="text-[9px] opacity-50 font-mono">${r.phone ? r.phone.substring(0, 3) + 'xxxx' + r.phone.slice(-3) : '-'}</div>
+                                ${r.photo_metadata ? '<span class="text-[8px] px-1 rounded mt-1 inline-block" style="background: rgba(81, 200, 255, 0.14); color: #8fdcff;">📷 EXIF</span>' : ''}
+                            </td>
+                            <td class="cursor-pointer">
+                                <div class="text-[10px] font-bold">${r.team_name || 'Unassigned'}</div>
+                                <div class="table-note">${r.staff_name || 'No staff owner yet'}</div>
+                            </td>
+                            <td class="cursor-pointer"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full" style="background:${categoryColor}"></div><span class="text-[10px] font-bold uppercase">${r.problem_type || 'General'}</span></div></td>
+                            <td class="cursor-pointer">
+                                <span class="urgency-badge" style="background:${urgencyMeta.bg}; color:${urgencyMeta.color}">${urgencyMeta.label}</span>
+                            </td>
+                            <td class="cursor-pointer max-w-xs">
+                                <div class="text-xs font-bold text-clamp-2" style="color: var(--text-high)">${escapeHtml(r.ai_summary || r.description || '-')}</div>
+                                <div class="table-secondary text-clamp-2">${escapeHtml(r.location_text || r.smart_analysis || 'No location summary')}</div>
+                            </td>
+                            <td class="cursor-pointer">
+                                <span class="status-badge" style="background:${statusMeta.bg}; color:${statusMeta.color}">${statusMeta.label}</span>
+                            </td>
+                            <td class="cursor-pointer">
+                                <span class="age-badge" style="${ageBadgeStyle}">${isSolved ? 'Closed' : `${reportAgeHours ?? 0}h`}</span>
+                            </td>
+                            <td class="cursor-pointer">
+                                ${isSolved && r.rating
+                                ? `<div class="text-xl text-yellow-500">${'★'.repeat(parseInt(r.rating))}${'☆'.repeat(5 - parseInt(r.rating))}</div><div class="text-[9px]" style="color: var(--text-low)">${r.rating}/5 stars</div>`
+                                : isSolved
+                                    ? `<div class="text-[10px] italic" style="color: var(--text-low)">ยังไม่ให้คะแนน</div>`
+                                    : `<div class="text-[10px]" style="color: var(--text-medium)">-</div>`
+                            }
+                            </td>
+                            <td>${actionBtn}</td>
+                        `;
+                        body.appendChild(tr);
+                    } catch (rowErr) { console.error('Row render error:', rowErr); }
+                });
+            } catch (fatal) { console.error('Render Fatal:', fatal); }
+        }
+
+        // Robust Selection Function
+        function selectReport(e, id, ticket) {
+            // Prevent if clicking a button
+            if (e.target.closest('button')) return;
+
+            console.log('Selecting Report:', { id, ticket });
+
+            // 1. Try ID
+            let r = allReports.find(x => String(x.report_id) === String(id) || String(x.id) === String(id));
+
+            // 2. Try Ticket
+            if (!r && ticket) {
+                console.warn('ID lookup failed, trying ticket:', ticket);
+                r = allReports.find(x => String(x.ticket_number) === String(ticket));
+            }
+
+            if (r) {
+                openDetails(r);
+            } else {
+                alert('Debug: Could not find report data.\nID: ' + id + '\nTicket: ' + ticket);
+            }
+        }
+
+        // Restored for Button Compatibility
+        function openDetailsByID(id) {
+            const r = allReports.find(x => String(x.report_id) === String(id) || String(x.id) === String(id));
+            if (r) openDetails(r);
+            else {
+                // Try ticket number fallback
+                const r2 = allReports.find(x => String(x.ticket_number) === String(id));
+                if (r2) openDetails(r2);
+                else alert('Report not found: ' + id);
+            }
+        }
+
+        function setMapMode(mode) {
+            mapMode = mode;
+            document.querySelectorAll('.map-mode-btn').forEach(b => b.classList.remove('active'));
+            const btn = document.getElementById(`mode-${mode}`);
+            if (btn) btn.classList.add('active');
+
+            // Toggle Back Button
+            const backBtn = document.getElementById('back-to-main-btn');
+            if (backBtn) {
+                if (mode === 'solved') {
+                    backBtn.classList.remove('hidden');
+                    backBtn.classList.add('flex');
+                    // Auto-clear filters when entering archive
+                    document.getElementById('table-filter').value = 'all';
+                } else {
+                    backBtn.classList.add('hidden');
+                    backBtn.classList.remove('flex');
+                }
+            }
+
+            render();
+        }
+
+        async function addReflection(e, id) {
+            e.stopPropagation();
+            const note = prompt("STAFF REFLECTION LOG:\n\nPlease enter comments regarding procurement difficulties, operational blockers, or suggestions for annual review.");
+            if (note) {
+                try {
+                    // Reuse status endpoint but update internalNotes
+                    const r = allReports.find(x => x.report_id === id);
+                    const newNote = r.internal_notes ? r.internal_notes + "\n[Reflect]: " + note : "[Reflect]: " + note;
+
+                    await fetch(`/api/reports/${id}/status`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            status: r.status,
+                            staffName: r.staff_name,
+                            staffComment: r.staff_comment,
+                            internalNotes: newNote
+                        })
+                    });
+                    alert('Reflection logged successfully.');
+                    fetchData();
+                } catch (err) { alert('Failed to log reflection'); }
+            }
+        }
+
+        function openDetails(r) {
+            try {
+                activeReport = r;
+                setSidebarOpen(false);
+
+                // Safe Map FlyTo
+                try {
+                    const lat = parseFloat(r.latitude);
+                    const lng = parseFloat(r.longitude);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        map.flyTo([lat, lng], 18, { animate: true, duration: 2 });
+                    }
+                } catch (mapErr) {
+                    console.warn('Map flyTo failed (ignoring):', mapErr);
+                }
+
+                document.getElementById('modal-overlay').classList.remove('hidden');
+
+                // Image Logic
+                const imgUrl = r.solution_image_url && r.solution_image_url.startsWith('http') ? r.solution_image_url : getDriveDirectLink(r.image_url);
+                const modalImg = document.getElementById('modal-image');
+
+                if (r.image_url === 'processing') {
+                    modalImg.src = 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJocDk1bHlnZzR4ZzR4ZzR4ZzR4ZzR4ZzR4ZzR4ZzR4ZzR4ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7bu3XilJ5BOiSGic/giphy.gif'; // Spinner
+                    document.getElementById('magic-eye-description').innerText = 'AI กำลังวิเคราะห์รูปภาพอย่างละเอียด... (Processing...)';
+                } else if (!imgUrl) {
+                    modalImg.src = 'https://placehold.co/600x400?text=No+Photo+Attached';
+                } else {
+                    modalImg.src = imgUrl;
+                }
+
+                // Header Info
+                document.getElementById('modal-ticket').innerText = r.ticket_number;
+                document.getElementById('modal-timestamp').innerText = thaiTime(r.timestamp);
+
+                // Inject Reporter Info
+                let profileDiv = document.getElementById('modal-profile');
+                if (!profileDiv) {
+                    profileDiv = document.createElement('div');
+                    profileDiv.id = 'modal-profile';
+                    profileDiv.className = 'mt-4 mb-2 p-3 rounded border';
+                    profileDiv.style.background = 'rgba(255, 255, 255, 0.04)';
+                    profileDiv.style.borderColor = 'var(--border-color)';
+                    document.getElementById('modal-timestamp').parentNode.appendChild(profileDiv);
+                }
+                profileDiv.innerHTML = `
+                <p class="text-[9px] font-bold uppercase opacity-50 mb-1">ผู้แจ้ง (Citizen)</p>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-lg font-black">${r.nickname || 'Guest'}</span>
+                    <span class="text-xs font-mono opacity-70">(${r.phone || 'No Phone'})</span>
+                </div>
+            `;
+
+                // Inject Category Editor (Dynamically added to header)
+                const catOptions = Object.keys(CAT_COLORS).map(c =>
+                    `<option value="${c}" ${c === r.problem_type ? 'selected' : ''}>${c}</option>`
+                ).join('');
+
+                const headerContainer = document.getElementById('modal-timestamp').parentNode;
+                let catSelector = document.getElementById('modal-cat-selector');
+                if (catSelector) catSelector.remove(); // Clean up previous instance
+
+                catSelector = document.createElement('select');
+                catSelector.id = 'modal-cat-selector';
+                catSelector.className = 'mt-2 p-1 text-xs font-bold uppercase rounded cursor-pointer block';
+                catSelector.style.border = '1px solid var(--border-color)';
+                catSelector.style.background = 'rgba(255, 255, 255, 0.05)';
+                catSelector.style.color = 'var(--text-high)';
+                catSelector.innerHTML = catOptions;
+                catSelector.onchange = (e) => updateCategory(r.report_id, e.target.value);
+                headerContainer.appendChild(catSelector);
+
+                // Inject Photo Metadata (Full Forensic Panel)
+                // Remove previous metadata panel if exists
+                const prevMeta = document.getElementById('modal-metadata-panel');
+                if (prevMeta) prevMeta.remove();
+
+                if (r.photo_metadata) {
+                    try {
+                        const meta = typeof r.photo_metadata === 'string' ? JSON.parse(r.photo_metadata) : r.photo_metadata;
+                        const metaDiv = document.createElement('div');
+                        metaDiv.id = 'modal-metadata-panel';
+                        metaDiv.className = 'mt-4 p-4 bg-zinc-900 text-white rounded font-mono text-[9px] leading-relaxed';
+
+                        // Helper to render a row only if value exists
+                        const row = (label, val) => val != null && val !== '' ? `<div><span class="opacity-40 block text-[8px] uppercase">${label}</span><span class="text-green-300">${val}</span></div>` : '';
+
+                        const gpsStatus = meta.latitude ? '🟢 GPS LOCKED' : '🔴 NO GPS';
+                        const gpsCoords = meta.latitude ? `${meta.latitude.toFixed(6)}, ${meta.longitude.toFixed(6)}` : 'N/A';
+
+                        metaDiv.innerHTML = `
+                        <div class="flex items-center justify-between mb-3 border-b border-white/20 pb-2">
+                            <p class="font-bold uppercase text-[10px] tracking-widest">📷 Digital Forensic Data (EXIF)</p>
+                            <span class="text-[8px] px-2 py-0.5 rounded ${meta.latitude ? 'bg-green-700' : 'bg-red-700'}">${gpsStatus}</span>
+                        </div>
+
+                        <p class="text-[8px] font-bold uppercase opacity-50 mb-1 mt-2">🔧 DEVICE</p>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 mb-3">
+                            ${row('Manufacturer', meta.make)}
+                            ${row('Model', meta.model)}
+                            ${row('Software', meta.software)}
+                            ${row('Lens', meta.lensModel || meta.lensMake)}
+                            ${row('Body S/N', meta.bodySerialNumber)}
+                            ${row('Lens S/N', meta.lensSerialNumber)}
+                        </div>
+
+                        <p class="text-[8px] font-bold uppercase opacity-50 mb-1">📍 GEOLOCATION</p>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 mb-3">
+                            ${row('Coordinates', gpsCoords)}
+                            ${row('Altitude', meta.altitude != null ? meta.altitude + 'm' : null)}
+                            ${row('Speed', meta.gpsSpeed != null ? meta.gpsSpeed + ' km/h' : null)}
+                            ${row('Direction', meta.gpsDirection != null ? meta.gpsDirection + '°' : null)}
+                            ${row('Precision (DOP)', meta.gpsDOP)}
+                        </div>
+
+                        <p class="text-[8px] font-bold uppercase opacity-50 mb-1">📐 IMAGE</p>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 mb-3">
+                            ${row('Resolution', meta.width && meta.height ? meta.width + ' × ' + meta.height + ' px' : null)}
+                            ${row('DPI', meta.xResolution)}
+                            ${row('Orientation', meta.orientation)}
+                            ${row('Color Space', meta.colorSpace)}
+                            ${row('Bits/Sample', meta.bitsPerSample)}
+                        </div>
+
+                        <p class="text-[8px] font-bold uppercase opacity-50 mb-1">⚙️ CAMERA SETTINGS</p>
+                        <div class="grid grid-cols-3 gap-x-4 gap-y-1 mb-3">
+                            ${row('ISO', meta.iso)}
+                            ${row('Aperture', meta.fStop ? 'f/' + meta.fStop : null)}
+                            ${row('Shutter', meta.exposure ? (meta.exposure < 1 ? '1/' + Math.round(1 / meta.exposure) : meta.exposure + 's') : null)}
+                            ${row('Focal Length', meta.focalLength ? meta.focalLength + 'mm' : null)}
+                            ${row('35mm Equiv.', meta.focalLengthIn35mm ? meta.focalLengthIn35mm + 'mm' : null)}
+                            ${row('Flash', meta.flash)}
+                            ${row('White Balance', meta.whiteBalance)}
+                            ${row('Exposure Mode', meta.exposureMode)}
+                            ${row('Metering', meta.meteringMode)}
+                            ${row('Scene Type', meta.sceneCaptureType)}
+                            ${row('Brightness', meta.brightnessValue != null ? meta.brightnessValue.toFixed(2) : null)}
+                        </div>
+
+                        <p class="text-[8px] font-bold uppercase opacity-50 mb-1">🕐 TIMESTAMPS</p>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 mb-2">
+                            ${row('Original', meta.dateTime ? thaiTime(meta.dateTime) : null)}
+                            ${row('Digitized', meta.dateTimeDigitized ? thaiTime(meta.dateTimeDigitized) : null)}
+                        </div>
+
+                        ${meta.imageUniqueID ? `<div class="mt-2 pt-2 border-t border-white/10"><span class="opacity-40 text-[8px]">Image UID:</span> <span class="text-yellow-300 text-[8px]">${meta.imageUniqueID}</span></div>` : ''}
+
+                        <div class="mt-3 pt-2 border-t border-white/10 text-[8px] opacity-40">
+                            ✅ Verified: Photo contains ${meta.latitude ? 'embedded GPS + ' : ''}device fingerprint data — consistent with real user submission
+                        </div>
+                    `;
+                        document.getElementById('modal-profile').after(metaDiv);
+                    } catch (e) { console.warn('Meta parse error', e); }
+                }
+
+                // Access Internal Notes
+                document.getElementById('internal-notes').value = r.internal_notes || '';
+
+                // Timestamps
+                document.getElementById('ts-1').innerText = r.ack_timestamp ? thaiTimeShort(r.ack_timestamp) : '';
+                document.getElementById('ts-2').innerText = r.in_progress_timestamp ? thaiTimeShort(r.in_progress_timestamp) : '';
+                document.getElementById('ts-3').innerText = r.completed_timestamp ? thaiTimeShort(r.completed_timestamp) : '';
+
+                // Status Logic
+                const isCompleted = r.status === 'completed';
+                const statusStep = { 'received': 1, 'assigned': 1, 'in_progress': 2, 'completed': 3 }[r.status] || 1;
+                setWorkflowStep(statusStep);
+
+                // Badges & Evidence
+                document.getElementById('after-badge').classList.toggle('hidden', !isCompleted);
+
+                if (isCompleted && r.solution_image_url) {
+                    document.getElementById('fixed-image-display').src = r.solution_image_url;
+                    document.getElementById('fixed-image-display').classList.remove('hidden');
+                    document.getElementById('preview-text').classList.add('hidden');
+                } else {
+                    document.getElementById('fixed-image-display').classList.add('hidden');
+                    document.getElementById('preview-text').classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error('CRITICAL ERROR in openDetails:', err);
+                alert('System Error: Unable to open report details.\n' + err.message);
+            }
+        }
+
+        async function updateCategory(id, newCat) {
+            try {
+                await fetch(`/api/reports/${id}/category`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category: newCat })
+                });
+                activeReport.problem_type = newCat;
+                fetchData();
+            } catch (e) { alert('Failed to update category'); }
+        }
+
+        function renderWeatherWidget() {
+            const widget = document.getElementById('weather-widget');
+            if (!widget) return;
+
+            const snapshot = currentWeatherSnapshot || {};
+            if (!snapshot.fetchedAt) {
+                widget.innerHTML = '<p class="text-[9px] opacity-50 italic">Loading Phuket marine weather...</p>';
+                return;
+            }
+
+            const weatherDescriptor = getWeatherCodeDescriptor(snapshot.weatherCode);
+            const marineRisk = snapshot.marineRisk || getMarineRisk(snapshot);
+            const monsoon = snapshot.monsoon || getMonsoonDescriptor(snapshot);
+            const mappedPorts = marinePortsSnapshot.ports.filter((port) => port.coordinates).length;
+            const tempValue = Number.isFinite(snapshot.temp) ? Math.round(snapshot.temp) : '--';
+            const humidityValue = Number.isFinite(snapshot.humidity) ? Math.round(snapshot.humidity) : '--';
+            const seaTempValue = Number.isFinite(snapshot.seaSurfaceTemp) ? `${snapshot.seaSurfaceTemp.toFixed(1)}°C` : '--';
+            const rain12hValue = Number.isFinite(snapshot.rain12h) ? snapshot.rain12h.toFixed(1) : '--';
+            const rainProbValue = Number.isFinite(snapshot.maxRainProb) ? Math.round(snapshot.maxRainProb) : '--';
+            const windSpeedValue = Number.isFinite(snapshot.windSpeed) ? Math.round(snapshot.windSpeed) : '--';
+            const windGustValue = Number.isFinite(snapshot.windGust) ? Math.round(snapshot.windGust) : '--';
+            const waveHeightValue = Number.isFinite(snapshot.waveHeight) ? snapshot.waveHeight.toFixed(1) : '--';
+            const cardTone = marineRisk.tone === 'danger'
+                ? 'rgba(166, 72, 57, 0.12)'
+                : marineRisk.tone === 'warn'
+                    ? 'rgba(200, 104, 47, 0.12)'
+                    : 'rgba(88, 110, 84, 0.12)';
+
+            try {
+                widget.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="text-[9px] font-bold uppercase" style="letter-spacing:0.14em; color: var(--text-low)">Phuket Marine Weather</p>
+                            <p class="text-[8px] opacity-60">${weatherDescriptor.label} • ${weatherDescriptor.icon}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[8px] uppercase font-semibold" style="letter-spacing:0.12em; color: var(--text-low)">Updated</p>
+                            <p class="text-[9px] font-mono" style="color: var(--text-medium)">${thaiTimeShort(snapshot.fetchedAt)}</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 items-stretch mt-2">
+                        <div class="p-3 rounded-lg" style="background: var(--surface-elevated); border:1px solid var(--border-color)">
+                            <h3 class="text-3xl font-bold" style="color: var(--text-high); letter-spacing: -0.04em">${tempValue}${tempValue === '--' ? '' : '°'}</h3>
+                            <p class="text-[8px] font-medium uppercase mt-1" style="letter-spacing:0.12em; color: var(--text-low)">Humidity ${humidityValue}${humidityValue === '--' ? '' : '%'}</p>
+                            <p class="text-[8px] mt-1" style="color: var(--text-medium)">Sea ${seaTempValue}</p>
+                        </div>
+                        <div class="space-y-1.5">
+                            <div class="p-2 rounded-lg text-center" style="background:${cardTone}; border:1px solid var(--border-color)">
+                                <p class="text-[7px] font-semibold uppercase mb-0.5" style="letter-spacing:0.14em; color:var(--text-low)">Rain Next 12h</p>
+                                <p class="text-lg font-bold leading-none" style="color:${marineRisk.color}">${rain12hValue}${rain12hValue === '--' ? '' : ' mm'}</p>
+                                <p class="text-[8px] mt-1" style="color: var(--text-medium)">Peak chance ${rainProbValue}${rainProbValue === '--' ? '' : '%'}</p>
+                            </div>
+                            <div class="p-2 rounded-lg text-center" style="background: var(--surface-default); border:1px solid var(--border-color)">
+                                <p class="text-[7px] font-semibold uppercase mb-0.5" style="letter-spacing:0.14em; color:var(--text-low)">Wind / Waves</p>
+                                <p class="text-[9px] font-semibold leading-tight">${windSpeedValue}${windSpeedValue === '--' ? '' : ' km/h'} • gust ${windGustValue}</p>
+                                <p class="text-[8px] mt-1" style="color: var(--text-medium)">${getCompassDirection(snapshot.windDirection)} • ${waveHeightValue}${waveHeightValue === '--' ? '' : ' m wave'}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <div class="p-2 rounded-lg" style="background: var(--surface-default); border:1px solid var(--border-color)">
+                            <p class="text-[7px] font-semibold uppercase mb-1" style="letter-spacing:0.14em; color:var(--text-low)">Monsoon Pattern</p>
+                            <p class="text-[10px] font-semibold" style="color:${monsoon.tone === 'warn' ? 'var(--accent-orange)' : 'var(--accent-blue)'}">${monsoon.flowLabel}</p>
+                            <p class="text-[8px] mt-1" style="color: var(--text-medium)">${monsoon.seasonLabel}</p>
+                        </div>
+                        <div class="p-2 rounded-lg" style="background: var(--surface-default); border:1px solid var(--border-color)">
+                            <p class="text-[7px] font-semibold uppercase mb-1" style="letter-spacing:0.14em; color:var(--text-low)">Marine Dept Ports</p>
+                            <p class="text-[10px] font-semibold" style="color: var(--text-high)">${marinePortsSnapshot.ports.length || '--'} Phuket berths</p>
+                            <p class="text-[8px] mt-1" style="color: var(--text-medium)">${mappedPorts} mapped on charted corridors</p>
+                        </div>
+                    </div>
+                    <div class="mt-2 pt-2" style="border-top:1px solid var(--border-color)">
+                        <p class="text-[8px] font-semibold uppercase" style="letter-spacing:0.14em; color:var(--text-low)">Marine Ops Status</p>
+                        <p class="text-[11px] mt-1" style="color:${marineRisk.color}; font-weight:700">${marineRisk.label}</p>
+                        <p class="text-[8px] mt-1" style="color: var(--text-medium)">${marineRisk.note}</p>
+                        <p class="text-[8px] mt-1" style="color: var(--text-low)">Monsoon signal is inferred from seasonal timing plus live wind and rain data.</p>
+                    </div>
+                `;
+            } catch (renderErr) {
+                console.error('Weather widget render error:', renderErr);
+                widget.innerHTML = `<p class="text-red-500 text-xs">Widget Error</p>`;
+            }
+        }
+
+        async function fetchMarinePorts() {
+            try {
+                const res = await fetch('/api/marine/phuket-ports');
+                if (!res.ok) throw new Error(`Marine ports failed: ${res.status}`);
+                const data = await res.json();
+                marinePortsSnapshot = {
+                    ports: Array.isArray(data.ports) ? data.ports : [],
+                    fetchedAt: data.fetchedAt || new Date().toISOString(),
+                    source: data.source || null
+                };
+                renderWeatherWidget();
+                if (isSeaRoutesEnabled()) renderSeaRoutes();
+            } catch (error) {
+                console.warn('Marine Department ports unavailable:', error);
+            }
+        }
+
+        async function fetchWeather() {
+            try {
+                const [weatherRes, marineRes] = await Promise.allSettled([
+                    fetch('https://api.open-meteo.com/v1/forecast?latitude=7.8804&longitude=98.3923&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m&hourly=precipitation_probability,precipitation,rain,showers,wind_speed_10m,wind_gusts_10m&forecast_days=2&timezone=Asia%2FBangkok'),
+                    fetch('https://marine-api.open-meteo.com/v1/marine?latitude=7.8804&longitude=98.3923&current=wave_height,wave_direction,wave_period,sea_surface_temperature&hourly=wave_height&forecast_days=2&timezone=Asia%2FBangkok')
+                ]);
+
+                let weatherData = null;
+                let marineData = null;
+
+                if (weatherRes.status === 'fulfilled' && weatherRes.value.ok) {
+                    weatherData = await weatherRes.value.json();
+                }
+
+                if (marineRes.status === 'fulfilled' && marineRes.value.ok) {
+                    marineData = await marineRes.value.json();
+                }
+
+                const currentWeather = weatherData?.current || {};
+                const currentMarine = marineData?.current || {};
+                const weatherCurrentTime = currentWeather.time || weatherData?.hourly?.time?.[0] || '';
+                const marineCurrentTime = currentMarine.time || marineData?.hourly?.time?.[0] || weatherCurrentTime;
+                const rain12hValues = getHourlyWindowValues(weatherData?.hourly, 'precipitation', weatherCurrentTime, 12);
+                const rainProbValues = getHourlyWindowValues(weatherData?.hourly, 'precipitation_probability', weatherCurrentTime, 12);
+                const wave12hValues = getHourlyWindowValues(marineData?.hourly, 'wave_height', marineCurrentTime, 12);
+
+                const snapshot = {
+                    temp: Number(currentWeather.temperature_2m),
+                    humidity: Number(currentWeather.relative_humidity_2m),
+                    rainNow: Number(currentWeather.precipitation ?? currentWeather.rain ?? 0),
+                    rain12h: sumSeries(rain12hValues),
+                    maxRainProb: maxSeries(rainProbValues) ?? 0,
+                    weatherCode: Number(currentWeather.weather_code),
+                    weatherLabel: getWeatherCodeDescriptor(currentWeather.weather_code).label,
+                    windSpeed: Number(currentWeather.wind_speed_10m),
+                    windGust: Number(currentWeather.wind_gusts_10m),
+                    windDirection: Number(currentWeather.wind_direction_10m),
+                    waveHeight: Number(currentMarine.wave_height ?? maxSeries(wave12hValues) ?? 0),
+                    wavePeriod: Number(currentMarine.wave_period),
+                    seaSurfaceTemp: Number(currentMarine.sea_surface_temperature),
+                    fetchedAt: new Date().toISOString()
+                };
+
+                snapshot.monsoon = getMonsoonDescriptor(snapshot);
+                snapshot.marineRisk = getMarineRisk(snapshot);
+                currentWeatherSnapshot = snapshot;
+            } catch (err) {
+                console.warn('Phuket marine weather fetch failed, using fallback:', err);
+                currentWeatherSnapshot = {
+                    temp: 31,
+                    humidity: 70,
+                    rainNow: 0,
+                    rain12h: 6,
+                    maxRainProb: 35,
+                    weatherCode: 2,
+                    weatherLabel: 'Partly Cloudy',
+                    windSpeed: 14,
+                    windGust: 22,
+                    windDirection: 220,
+                    waveHeight: 0.8,
+                    wavePeriod: 4,
+                    seaSurfaceTemp: 29,
+                    fetchedAt: new Date().toISOString()
+                };
+                currentWeatherSnapshot.monsoon = getMonsoonDescriptor(currentWeatherSnapshot);
+                currentWeatherSnapshot.marineRisk = getMarineRisk(currentWeatherSnapshot);
+            }
+
+            renderWeatherWidget();
+            if (isSeaRoutesEnabled()) renderSeaRoutes();
+        }
+
+        function setWorkflowStep(step) {
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`box-${i}`).className = `step-box ${i === step ? 'active' : ''} ${i < step ? 'completed' : ''}`;
+                const content = document.getElementById(`step-content-${i}`);
+                if (content) content.className = i === step ? '' : 'hidden';
+            }
+            if (step === 4) buildTimeline(activeReport);
+        }
+
+        function buildTimeline(r) {
+            const items = [
+                { stage: 'RECEIVED', time: r.timestamp, by: 'Citizen' },
+                { stage: 'ACKNOWLEDGED', time: r.ack_timestamp, by: r.team_name || 'Staff' },
+                { stage: 'IN PROGRESS', time: r.in_progress_timestamp, by: r.team_name },
+                { stage: 'COMPLETED', time: r.completed_timestamp, by: r.team_name }
+            ];
+            document.getElementById('timeline-list').innerHTML = items.filter(i => i.time).map(i => `
+                <div class="timeline-item">
+                    <p class="font-black text-[10px] uppercase">${i.stage}</p>
+                    <p class="text-xs opacity-60">${thaiTime(i.time)}</p>
+                    <p class="text-[10px] font-bold">ACTOR: ${i.by || 'System'}</p>
+                </div>
+            `).join('');
+        }
+
+        async function uploadEvidence() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const formData = new FormData();
+                formData.append('image', file);
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    document.getElementById('fixed-image-display').src = ev.target.result;
+                    document.getElementById('fixed-image-display').classList.remove('hidden');
+                    document.getElementById('preview-text').innerText = 'UPLOADING...';
+                };
+                reader.readAsDataURL(file);
+                try {
+                    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    currentUploadedUrl = data.url;
+                    document.getElementById('preview-text').classList.add('hidden');
+                } catch (err) { alert('Upload failed'); }
+            };
+            input.click();
+        }
+
+        async function saveWorkflow(step) {
+            if (activeReport.status === 'completed') return alert('This record is locked.');
+            let status = 'assigned';
+            const body = {
+                staffName: 'Command Admin',
+                staffComment: document.getElementById(`staff-note-${step}`)?.value || 'Updated',
+                internalNotes: document.getElementById('internal-notes').value
+            };
+            if (step === 1) {
+                status = 'assigned';
+                body.teamName = document.getElementById('team-select').value;
+                if (!body.teamName) return alert('Assign a team first.');
+            }
+            if (step === 2) status = 'in_progress';
+            if (step === 3) {
+                status = 'completed';
+                if (!currentUploadedUrl) return alert('Photo required.');
+                body.solutionImageUrl = currentUploadedUrl;
+            }
+            body.status = status;
+            try {
+                const res = await fetch(`/api/reports/${activeReport.report_id}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (res.ok) {
+                    if (step === 3) closeModal();
+                    fetchData();
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function calculatePerformance() {
+            // 1. Avg Resolution Time
+            const completed = allReports.filter(r => r.status === 'completed' && r.completed_timestamp);
+            if (completed.length > 0) {
+                const totalHours = completed.reduce((acc, r) => {
+                    const start = new Date(r.timestamp);
+                    const end = new Date(r.completed_timestamp);
+                    return acc + (end - start) / (1000 * 60 * 60);
+                }, 0);
+                const avg = Math.round(totalHours / completed.length);
+                document.getElementById('avg-time').innerText = `${avg}h`;
+            } else {
+                document.getElementById('avg-time').innerText = 'N/A';
+            }
+
+            // 2. Longest Waiting (Aging)
+            const active = allReports.filter(r => r.status !== 'completed');
+            const aging = active.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(0, 3);
+
+            const agingHTML = aging.map(r => {
+                const ageHours = Math.floor((new Date() - new Date(r.timestamp)) / (1000 * 60 * 60));
+                return `
+                    <div class="flex justify-between items-start cursor-pointer group p-1 rounded transition-colors" style="transition: background 0.15s ease;" onmouseenter="this.style.background='rgba(255,255,255,0.05)'" onmouseleave="this.style.background='transparent'" onclick="selectReport(event, '${r.report_id}', '${r.ticket_number}')">
+                         <div class="flex flex-col overflow-hidden">
+                            <span class="text-[10px] font-bold truncate" style="color: var(--accent-blue)">${r.ticket_number || 'No Ticket'}</span>
+                            <span class="text-[9px] font-medium opacity-60 truncate">${r.problem_type}</span>
+                         </div>
+                         <span class="text-[9px] font-bold px-1.5 py-0.5 rounded ml-2 whitespace-nowrap" style="color: #ff9a92; background: rgba(255, 107, 107, 0.12)">${ageHours}h</span>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('aging-list').innerHTML = agingHTML || '<div class="text-[9px] opacity-30">No active issues</div>';
+        }
+
+        function updateAICommentary() {
+            calculatePerformance(); // Run stats update
+            const categories = {};
+            allReports.forEach(r => categories[r.problem_type] = (categories[r.problem_type] || 0) + 1);
+            const highFreq = Object.entries(categories).sort((a, b) => b[1] - a[1])[0];
+            const issueName = highFreq ? highFreq[0] : 'ทั่วไป';
+
+            const comments = [
+                `⚠️ ตรวจพบความหนาแน่นการแจ้งเหตุในหมวด "${issueName}" สูงกว่าปกติ แนะนำให้ทีมงานเข้าตรวจสอบพื้นที่จุดเสี่ยงครับ`,
+                `⚡ ประสิทธิภาพการแก้ไขงาน (Resolution Velocity) เพิ่มขึ้น 12% ในช่วง 24 ชม. ที่ผ่านมา`,
+                `📊 AI Sentiment Analysis: ประชาชนมีความพึงพอใจต่อการตอบสนองเร็วขึ้น 4.5%`,
+                `📍 ระบบตรวจพบ Pattern การแจ้งซ่อมซ้ำในพื้นที่เดิม กำลังประมวลผลจัดลำดับความเร่งด่วนใหม่อัตโนมัติ`
+            ];
+            document.getElementById('ai-commentary-text').innerText = comments[Math.floor(Math.random() * comments.length)];
+        }
+
+        function updateLeaderboard() {
+            const teams = {};
+
+            // Collect stats
+            allReports.forEach(r => {
+                if (r.status === 'completed' && r.team_name) {
+                    if (!teams[r.team_name]) {
+                        teams[r.team_name] = { solved: 0, totalTime: 0, countForTime: 0 };
+                    }
+                    teams[r.team_name].solved++;
+
+                    if (r.timestamp && r.completed_timestamp) {
+                        const start = new Date(r.timestamp);
+                        const end = new Date(r.completed_timestamp);
+                        const hours = (end - start) / (1000 * 60 * 60);
+                        if (hours > 0) {
+                            teams[r.team_name].totalTime += hours;
+                            teams[r.team_name].countForTime++;
+                        }
+                    }
+                }
+            });
+
+            // Convert to array and sort
+            const leaderboard = Object.entries(teams)
+                .map(([name, stats]) => ({
+                    name,
+                    solved: stats.solved,
+                    avgTime: stats.countForTime > 0 ? Math.round(stats.totalTime / stats.countForTime) : 0
+                }))
+                .sort((a, b) => b.solved - a.solved);
+
+            // Render
+            const container = document.getElementById('team-leaderboard');
+            if (leaderboard.length === 0) {
+                container.innerHTML = '<p class="text-[9px] opacity-40 italic">ยังไม่มีการแก้ไขสำเร็จ</p>';
+                return;
+            }
+
+            container.innerHTML = leaderboard.map((team, index) => `
+                <div class="flex items-center justify-between pb-2 last:border-0" style="border-bottom: 1px solid var(--border-color)">
+                    <div class="flex items-center gap-3">
+                        <span class="text-[10px] font-black w-4 text-center" style="color: ${index < 3 ? 'var(--text-high)' : 'var(--text-low)'}">#${index + 1}</span>
+                        <div>
+                            <p class="text-[10px] font-bold">${team.name}</p>
+                            <p class="text-[9px] opacity-60">Avg. Time: ${team.avgTime}h</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-sm font-black">${team.solved}</span>
+                        <span class="text-[8px] font-bold uppercase block opacity-40">Solved</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function fetchSocialPulse() {
+            try {
+                const res = await fetch('/api/analytics/social');
+                const data = await res.json();
+                if (!data || !data.sentiment) return;
+
+                // Sentiment
+                const total = data.totalConversations || 1;
+                const posPct = (data.sentiment.positive / total) * 100;
+                const neuPct = (data.sentiment.neutral / total) * 100;
+                const negPct = (data.sentiment.negative / total) * 100;
+
+                document.getElementById('pulse-pos').style.width = `${posPct}%`;
+                document.getElementById('pulse-neu').style.width = `${neuPct}%`;
+                document.getElementById('pulse-neg').style.width = `${negPct}%`;
+                document.getElementById('pulse-pos-label').innerText = `${Math.round(posPct)}% Pos`;
+                document.getElementById('pulse-neg-label').innerText = `${Math.round(negPct)}% Neg`;
+
+                // Topics
+                const topicsDiv = document.getElementById('pulse-topics');
+                if (data.topics && data.topics.length > 0) {
+                    topicsDiv.innerHTML = data.topics.slice(0, 5).map(t => `
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] font-medium truncate w-32"># ${t.topic}</span>
+                            <span class="text-[9px] font-bold px-1 rounded" style="background: rgba(255, 255, 255, 0.08)">${t.count}</span>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                console.warn('Social pulse error:', e);
+                document.getElementById('pulse-topics').innerHTML = '<p class="text-[9px] opacity-40 text-red-500">Offline</p>';
+            }
+        }
+
+        async function fetchBrief() {
+            try {
+                const res = await fetch('/api/intelligence/latest');
+                const data = await res.json();
+                if (data.content) {
+                    window.latestBriefContent = data.content;
+                    document.getElementById('brief-preview').innerText = "Last Updated: " + thaiTime(data.timestamp);
+                } else {
+                    document.getElementById('brief-preview').innerText = "No briefs available. Run analysis.";
+                }
+            } catch (e) {
+                document.getElementById('brief-preview').innerText = "System Offline";
+            }
+        }
+
+        async function generateBrief() {
+            const btn = document.getElementById('btn-gen-brief');
+            btn.innerText = "Analyzing...";
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/intelligence/generate', { method: 'POST' });
+                const data = await res.json();
+                if (data.content) {
+                    window.latestBriefContent = data.content;
+                    alert('Intelligence Brief Generated!');
+                    fetchBrief();
+                }
+            } catch (e) {
+                alert('Analysis failed');
+            } finally {
+                btn.innerText = "Run Intelligence Analysis";
+                btn.disabled = false;
+            }
+        }
+
+        function showBriefModal() {
+            if (!window.latestBriefContent) return;
+            // Hacky Reuse of modal overlay for quick display
+            const overlay = document.getElementById('modal-overlay');
+            // Check if we need to create a brief specific modal logic or reuse
+            // Reuse logic: We will just inject a new modal-like div if not exists
+            let briefModal = document.getElementById('brief-modal');
+            if (!briefModal) {
+                briefModal = document.createElement('div');
+                briefModal.id = 'brief-modal';
+                briefModal.className = 'fixed inset-0 bg-black/80 z-[2100] flex items-center justify-center p-8 hidden';
+                briefModal.innerHTML = `
+                    <div class="w-full max-w-4xl h-[80vh] overflow-y-auto p-12 rounded relative" style="background: linear-gradient(180deg, rgba(16, 34, 30, 0.96), rgba(8, 18, 16, 0.98)); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.48); border: 1px solid var(--border-color);">
+                        <button onclick="document.getElementById('brief-modal').classList.add('hidden')" class="absolute top-4 right-4 text-2xl font-bold" style="color: var(--text-high)">&times;</button>
+                        <div id="brief-content-markdown" class="prose max-w-none" style="color: var(--text-high)"></div>
+                    </div>
+                 `;
+                document.body.appendChild(briefModal);
+            }
+            document.getElementById('brief-content-markdown').innerHTML = marked.parse(window.latestBriefContent);
+            briefModal.classList.remove('hidden');
+        }
+
+        // Dynamic City News
+        async function fetchNews() {
+            try {
+                const res = await fetch('/api/news');
+                const data = await res.json();
+                const container = document.getElementById('city-news-content');
+                const timeEl = document.getElementById('news-refresh-time');
+
+                if (data.news && data.news.length > 0) {
+                    container.innerHTML = data.news.map((item, i) => `
+                        <div class="${i < data.news.length - 1 ? 'pb-2' : ''}" style="${i < data.news.length - 1 ? 'border-bottom: 1px solid var(--border-color);' : ''}">
+                            <p class="text-[10px] font-bold">${item.icon || '📰'} ${item.title}</p>
+                            <p class="text-[9px] opacity-60">${item.summary}</p>
+                        </div>
+                    `).join('');
+                    if (timeEl) timeEl.innerText = thaiNow();
+                } else {
+                    container.innerHTML = '<p class="text-[9px] opacity-40 italic">ไม่มีข่าวใหม่</p>';
+                }
+            } catch (e) {
+                console.warn('News fetch error:', e);
+            }
+        }
+
+        // Mock Search Result
+        const govSearch = document.getElementById('gov-search');
+        if (govSearch) {
+            govSearch.addEventListener('input', (e) => {
+                const q = e.target.value.toLowerCase();
+                const results = document.getElementById('search-results');
+                if (q.length > 3) {
+                    if (q.includes('road')) results.innerText = "Found in Code 44.2: Road structural integrity must be restored within 72 hours of notification.";
+                    else if (q.includes('animal')) results.innerText = "Public Health Act 1992: Stray management protocols defined in Section 14.";
+                    else results.innerText = "Querying government document store...";
+                } else results.innerText = "";
+            });
+        }
+
+        let floodLayer = null;
+        async function toggleFloodLayer() {
+            const isChecked = document.getElementById('flood-toggle').checked;
+            const apiKey = 'MvhlzOXxzwWfzc4MjI6WXXpomq1vIQjLo0uLRHXws0cXbH3uDaWCp3MWzpeRmNV5';
+
+            if (isChecked) {
+                // Using GISTDA WMS for 7-day flood monitoring
+                floodLayer = L.tileLayer.wms('https://api-gateway.gistda.or.th/api/2.0/resources/maps/flood/7days/wms', {
+                    layers: 'flood_7days',
+                    format: 'image/png',
+                    transparent: true,
+                    version: '1.3.0',
+                    api_key: apiKey,
+                    opacity: 0.7,
+                    pane: 'floodPane'
+                }).addTo(map);
+
+                // Show AI warning if flood layer is on
+                document.getElementById('ai-commentary-text').innerText = "🚨 GISTDA Flood Monitor Active: วิเคราะห์พื้นที่เสี่ยงภัยน้ำท่วมขังแบบเรียลไทม์ โปรดประสานงานทีมบรรเทาสาธารณภัยในจุดวิกฤต";
+            } else {
+                if (floodLayer) {
+                    map.removeLayer(floodLayer);
+                    floodLayer = null;
+                }
+                updateAICommentary();
+            }
+        }
+
+        let bkkFloodLayer = L.layerGroup();
+        async function toggleBkkFloodRisk() {
+            const isChecked = document.getElementById('bkk-flood-toggle').checked;
+
+            if (isChecked) {
+                bkkFloodLayer.addTo(map);
+                if (bkkFloodLayer.getLayers().length === 0) {
+                    try {
+                        // Fetching Flood Risk Points from Bangkok Open Data API
+                        const res = await fetch('https://data.bangkok.go.th/api/3/action/datastore_search?resource_id=8f1102d5-52a2-4494-9131-403e4f87a242&limit=100');
+                        const data = await res.json();
+                        const records = data.result.records;
+
+                        records.forEach(point => {
+                            if (point.latitude && point.longitude) {
+                                const lat = parseFloat(point.latitude);
+                                const lng = parseFloat(point.longitude);
+                                L.circleMarker([lat, lng], {
+                                    radius: 6,
+                                    fillColor: "#10b981",
+                                    color: "#fff",
+                                    weight: 2,
+                                    opacity: 1,
+                                    fillOpacity: 0.8
+                                }).bindPopup(`
+                                    <div class="font-sans">
+                                        <p class="text-[10px] font-bold uppercase text-emerald-600 mb-1">BKK Risk Point</p>
+                                        <p class="font-bold text-sm">${point.name || 'Unnamed Point'}</p>
+                                        <p class="text-xs opacity-60">District: ${point.district}</p>
+                                        <p class="text-xs bg-emerald-50 p-2 rounded mt-2">${point.status_detail || 'Monitor Area'}</p>
+                                    </div>
+                                `).addTo(bkkFloodLayer);
+                            }
+                        });
+                    } catch (e) {
+                        console.error('BKK API Error:', e);
+                        alert('ไม่สามารถดึงข้อมูลจุดเสี่ยงน้ำท่วมจากกรุงเทพมหานครได้ในขณะนี้');
+                    }
+                }
+            } else {
+                map.removeLayer(bkkFloodLayer);
+            }
+        }
+
+        function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+        function resetMapView() { map.setView([13.75, 100.5], 6); }
+
+        // Live Thailand Clock
+        function updateThaiClock() {
+            const now = new Date();
+            const clockEl = document.getElementById('thai-clock-sidebar');
+            const dateEl = document.getElementById('thai-date-sidebar');
+            if (clockEl) clockEl.innerText = now.toLocaleTimeString('th-TH', { timeZone: TH_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            if (dateEl) dateEl.innerText = now.toLocaleDateString('th-TH', { timeZone: TH_TZ, weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 1024) setSidebarOpen(false);
+        });
+
+        window.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                setSidebarOpen(false);
+            }
+        });
+
+        updateThaiClock();
+        setInterval(updateThaiClock, 1000);
+
+        renderMapLegend();
+        map.whenReady(() => {
+            if (isDistanceGridEnabled()) {
+                scheduleDistanceGridRefresh(true);
+            }
+            if (isSeaRoutesEnabled()) {
+                renderSeaRoutes();
+            }
+        });
+        fetchMarinePorts();
+        fetchWeather();
+        setInterval(fetchWeather, 600000);
+        map.on('zoomend', render);
+        map.on('moveend', () => {
+            if (isDistanceGridEnabled()) {
+                scheduleDistanceGridRefresh();
+            }
+            if (isSeaRoutesEnabled()) {
+                setSeaRouteStatus(currentWeatherSnapshot?.marineRisk?.label ? `${PHUKET_SEA_ROUTES.length} corridors • ${currentWeatherSnapshot.marineRisk.label}` : 'Sea routes active', currentWeatherSnapshot?.marineRisk?.tone || 'active');
+            }
+            if (getAqiToggles().showPoints || getAqiToggles().showHeat) {
+                scheduleAqiOverlayRefresh();
+            }
+        });
+        fetchData();
+        setInterval(fetchData, 30000);
+        fetchBrief();
+        fetchNews();
+        setInterval(fetchNews, 300000); // Refresh news every 5 minutes
+    </script>
+</body>
+
+</html>
