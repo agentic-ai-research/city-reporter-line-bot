@@ -10,7 +10,8 @@ function getAuth() {
 function getSpreadsheetId() {
     return process.env.GOOGLE_SPREADSHEET_ID;
 }
-const SHEET_NAME = 'Reports';
+const SHEET_NAME_V1 = 'Reports';
+const SHEET_NAME_V2 = 'Reports_V2';
 
 // Column headers for the spreadsheet
 const HEADERS = [
@@ -80,14 +81,32 @@ export async function initializeSpreadsheet() {
             spreadsheetId: getSpreadsheetId(),
         });
 
-        // 1. Check Reports Sheet
-        const reportsSheetExists = meta.data.sheets.some(s => s.properties.title === SHEET_NAME);
-        if (!reportsSheetExists) {
-            await sheets.spreadsheets.batchUpdate({
+        // 1. Check Reports Sheets (V1 and V2)
+        for (const sheetName of [SHEET_NAME_V1, SHEET_NAME_V2]) {
+            const exists = meta.data.sheets.some(s => s.properties.title === sheetName);
+            if (!exists) {
+                await sheets.spreadsheets.batchUpdate({
+                    spreadsheetId: getSpreadsheetId(),
+                    requestBody: { requests: [{ addSheet: { properties: { title: sheetName } } }] }
+                });
+                console.log(`Created sheet: ${sheetName}`);
+            }
+
+            // Update Headers for both
+            const resp = await sheets.spreadsheets.values.get({
                 spreadsheetId: getSpreadsheetId(),
-                requestBody: { requests: [{ addSheet: { properties: { title: SHEET_NAME } } }] }
+                range: `${sheetName}!A1:AC1`,
             });
-            console.log(`Created sheet: ${SHEET_NAME}`);
+            const currentHeaders = resp.data.values ? resp.data.values[0] : [];
+            if (currentHeaders.join(',') !== HEADERS.join(',')) {
+                await sheets.spreadsheets.values.update({
+                    spreadsheetId: getSpreadsheetId(),
+                    range: `${sheetName}!A1:AC1`,
+                    valueInputOption: 'RAW',
+                    requestBody: { values: [HEADERS] },
+                });
+                console.log(`${sheetName} headers synchronized`);
+            }
         }
 
         // 2. Check Conversations Sheet
@@ -116,21 +135,7 @@ export async function initializeSpreadsheet() {
             console.log(`Created sheet: ${BRIEF_SHEET_NAME}`);
         }
 
-        // 4. Update Reports Headers
-        const reportResp = await sheets.spreadsheets.values.get({
-            spreadsheetId: getSpreadsheetId(),
-            range: `${SHEET_NAME}!A1:AC1`, // 29 columns
-        });
-        const currentReportHeaders = reportResp.data.values ? reportResp.data.values[0] : [];
-        if (currentReportHeaders.join(',') !== HEADERS.join(',')) {
-            await sheets.spreadsheets.values.update({
-                spreadsheetId: getSpreadsheetId(),
-                range: `${SHEET_NAME}!A1:AC1`,
-                valueInputOption: 'RAW',
-                requestBody: { values: [HEADERS] },
-            });
-            console.log('Reports headers synchronized (Metadata added)');
-        }
+        // 2. Check Conversations Sheet (Handled above in initialize loop if we wanted, but keeping separate for now or refactoring)
 
         // 4. Update Conversations Headers
         const convoResp = await sheets.spreadsheets.values.get({
@@ -207,9 +212,11 @@ export async function logConversationToSheet(values) {
 /**
  * Append a new report to the spreadsheet
  * @param {Object} report - Report data
+ * @param {string} version - 'v1' or 'v2'
  */
-export async function appendReport(report) {
-    console.log(`[Sheets] Appending Report ${report.ticketNumber}...`);
+export async function appendReport(report, version = 'v1') {
+    const sheetName = version === 'v2' ? SHEET_NAME_V2 : SHEET_NAME_V1;
+    console.log(`[Sheets] Appending Report ${report.ticketNumber} to ${sheetName}...`);
     try {
         const auth = getAuth();
         const sheets = google.sheets({ version: 'v4', auth });
@@ -250,7 +257,7 @@ export async function appendReport(report) {
         console.log(`[Sheets] Payload prepared. Size: ${row.length} columns.`);
         const response = await sheets.spreadsheets.values.append({
             spreadsheetId: getSpreadsheetId(),
-            range: `${SHEET_NAME}!A:AC`, // 29 columns
+            range: `${sheetName}!A:AC`, // 29 columns
             valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             requestBody: {
@@ -274,16 +281,18 @@ export async function appendReport(report) {
 
 /**
  * Get all reports from the spreadsheet
+ * @param {string} version - 'v1' or 'v2'
  * @returns {Array} - Array of report objects
  */
-export async function getAllReports() {
+export async function getAllReports(version = 'v1') {
+    const sheetName = version === 'v2' ? SHEET_NAME_V2 : SHEET_NAME_V1;
     try {
         const auth = getAuth();
         const sheets = google.sheets({ version: 'v4', auth });
 
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: getSpreadsheetId(),
-            range: `${SHEET_NAME}!A:AC`, // 29 columns
+            range: `${sheetName}!A:AC`, // 29 columns
         });
 
         const rows = response.data.values || [];
@@ -307,12 +316,12 @@ export async function getAllReports() {
 }
 
 /**
- * Generate sequential ticket number (e.g., 0001, 0002, ...)
- * Fetches current count from Google Sheets to determine next number
+ * Generate sequential ticket number
+ * @param {string} version - 'v1' or 'v2'
  */
-export async function generateTicketNumber() {
+export async function generateTicketNumber(version = 'v1') {
     try {
-        const reports = await getAllReports();
+        const reports = await getAllReports(version);
         const nextNumber = reports.length + 1;
         return String(nextNumber).padStart(4, '0');
     } catch (error) {
@@ -330,8 +339,10 @@ export async function generateTicketNumber() {
  * Update report details
  * @param {string} reportId - Report ID to update
  * @param {Object} updates - { status, staffName, staffComment }
+ * @param {string} version - 'v1' or 'v2'
  */
-export async function updateReport(reportId, updates) {
+export async function updateReport(reportId, updates, version = 'v1') {
+    const sheetName = version === 'v2' ? SHEET_NAME_V2 : SHEET_NAME_V1;
     try {
         const auth = getAuth();
         const sheets = google.sheets({ version: 'v4', auth });
@@ -339,7 +350,7 @@ export async function updateReport(reportId, updates) {
         // First, find the row with this report ID
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: getSpreadsheetId(),
-            range: `${SHEET_NAME}!A:A`,
+            range: `${sheetName}!A:A`,
         });
 
         const rows = response.data.values || [];
@@ -367,9 +378,9 @@ export async function updateReport(reportId, updates) {
         if (updates.inProgressTimestamp) requests.push({ range: `${SHEET_NAME}!V${rowNumber}`, values: [[updates.inProgressTimestamp]] });
         if (updates.completedTimestamp) requests.push({ range: `${SHEET_NAME}!W${rowNumber}`, values: [[updates.completedTimestamp]] });
 
-        if (updates.teamName) requests.push({ range: `${SHEET_NAME}!X${rowNumber}`, values: [[updates.teamName]] });
-        if (updates.internalNotes) requests.push({ range: `${SHEET_NAME}!Y${rowNumber}`, values: [[updates.internalNotes]] });
-        if (updates.solutionImageUrl) requests.push({ range: `${SHEET_NAME}!P${rowNumber}`, values: [[updates.solutionImageUrl]] });
+        if (updates.teamName) requests.push({ range: `${sheetName}!X${rowNumber}`, values: [[updates.teamName]] });
+        if (updates.internalNotes) requests.push({ range: `${sheetName}!Y${rowNumber}`, values: [[updates.internalNotes]] });
+        if (updates.solutionImageUrl) requests.push({ range: `${sheetName}!P${rowNumber}`, values: [[updates.solutionImageUrl]] });
 
         for (const req of requests) {
             await sheets.spreadsheets.values.update({
@@ -412,8 +423,10 @@ export function createAuditEntry(action, details = {}) {
  * Append audit entry to existing audit log
  * @param {string} reportId - Report ID
  * @param {string} entry - New audit entry
+ * @param {string} version - 'v1' or 'v2'
  */
-export async function appendAuditLog(reportId, entry) {
+export async function appendAuditLog(reportId, entry, version = 'v1') {
+    const sheetName = version === 'v2' ? SHEET_NAME_V2 : SHEET_NAME_V1;
     try {
         const auth = getAuth();
         const sheets = google.sheets({ version: 'v4', auth });
@@ -421,7 +434,7 @@ export async function appendAuditLog(reportId, entry) {
         // Get current audit log
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: getSpreadsheetId(),
-            range: `${SHEET_NAME}!A:T`,
+            range: `${sheetName}!A:T`,
         });
 
         const rows = response.data.values || [];
@@ -438,7 +451,7 @@ export async function appendAuditLog(reportId, entry) {
 
         await sheets.spreadsheets.values.update({
             spreadsheetId: getSpreadsheetId(),
-            range: `${SHEET_NAME}!T${rowNumber}`,
+            range: `${sheetName}!T${rowNumber}`,
             valueInputOption: 'RAW',
             requestBody: { values: [[newLog]] },
         });

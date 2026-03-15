@@ -1042,12 +1042,12 @@
 
     <div class="mt-auto pt-4" style="border-top: 1px solid var(--border-color)">
         <div class="flex gap-2 mb-3">
-            <a href="/staff.html"
+            <a href="/v1/staff.html"
                 class="flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-[9px] font-semibold"
                 style="background: var(--surface-elevated); color: var(--text-medium)">
                 📱 Staff
             </a>
-            <a href="/api/reports/geojson" target="_blank"
+            <a href="/api/v1/reports/geojson" target="_blank"
                 class="flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-[9px] font-semibold"
                 style="background: var(--accent-blue); color: white">
                 📊 GeoJSON
@@ -2675,7 +2675,7 @@
 
         async function fetchData() {
             try {
-                const res = await fetch('/api/reports');
+                const res = await fetch('/api/v1/reports');
                 const data = await res.json();
 
                 if (data.success === false) {
@@ -2752,7 +2752,7 @@
 
         async function fetchEarlyWarnings() {
             try {
-                const res = await fetch('/api/early-warnings');
+                const res = await fetch('/api/v1/early-warnings');
                 const data = await res.json();
 
                 // Update unique devices stat
@@ -3057,7 +3057,7 @@
                     const r = allReports.find(x => x.report_id === id);
                     const newNote = r.internal_notes ? r.internal_notes + "\n[Reflect]: " + note : "[Reflect]: " + note;
 
-                    await fetch(`/api/reports/${id}/status`, {
+                    await fetch(`/api/v1/reports/${id}/status`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -3260,7 +3260,7 @@
 
         async function updateCategory(id, newCat) {
             try {
-                await fetch(`/api/reports/${id}/category`, {
+                await fetch(`/api/v1/reports/${id}/category`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ category: newCat })
@@ -3356,7 +3356,7 @@
 
         async function fetchMarinePorts() {
             try {
-                const res = await fetch('/api/marine/phuket-ports');
+                const res = await fetch('/api/v1/marine/phuket-ports');
                 if (!res.ok) throw new Error(`Marine ports failed: ${res.status}`);
                 const data = await res.json();
                 marinePortsSnapshot = {
@@ -3485,7 +3485,7 @@
                 };
                 reader.readAsDataURL(file);
                 try {
-                    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                    const res = await fetch('/api/v1/upload', { method: 'POST', body: formData });
                     const data = await res.json();
                     currentUploadedUrl = data.url;
                     document.getElementById('preview-text').classList.add('hidden');
@@ -3515,7 +3515,7 @@
             }
             body.status = status;
             try {
-                const res = await fetch(`/api/reports/${activeReport.report_id}/status`, {
+                const res = await fetch(`/api/v1/reports/${activeReport.report_id}/status`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
@@ -3636,7 +3636,7 @@
 
         async function fetchSocialPulse() {
             try {
-                const res = await fetch('/api/analytics/social');
+                const res = await fetch('/api/v1/analytics/social');
                 const data = await res.json();
                 if (!data || !data.sentiment) return;
 
@@ -3670,7 +3670,7 @@
 
         async function fetchBrief() {
             try {
-                const res = await fetch('/api/intelligence/latest');
+                const res = await fetch('/api/v1/intelligence/latest');
                 const data = await res.json();
                 if (data.content) {
                     window.latestBriefContent = data.content;
@@ -3688,7 +3688,7 @@
             btn.innerText = "Analyzing...";
             btn.disabled = true;
             try {
-                const res = await fetch('/api/intelligence/generate', { method: 'POST' });
+                const res = await fetch('/api/v1/intelligence/generate', { method: 'POST' });
                 const data = await res.json();
                 if (data.content) {
                     window.latestBriefContent = data.content;
@@ -3729,7 +3729,7 @@
         // Dynamic City News
         async function fetchNews() {
             try {
-                const res = await fetch('/api/news');
+                const res = await fetch('/api/v1/news');
                 const data = await res.json();
                 const container = document.getElementById('city-news-content');
                 const timeEl = document.getElementById('news-refresh-time');

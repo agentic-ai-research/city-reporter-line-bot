@@ -7,7 +7,7 @@
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/v2/manifest.json">
     <title>SCTH | Command Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;900&display=swap" rel="stylesheet">
@@ -358,7 +358,7 @@
         async function fetchData() {
             document.getElementById('sync-indicator').classList.add('animate-pulse');
             try {
-                const res = await fetch('/api/reports');
+                const res = await fetch('/api/v2/reports');
                 reports = await res.json();
                 renderFeed();
                 document.getElementById('sync-indicator').classList.remove('animate-pulse');
@@ -367,7 +367,7 @@
 
         async function fetchStats() {
             try {
-                const res = await fetch('/api/stats');
+                const res = await fetch('/api/v2/stats');
                 const data = await res.json();
                 
                 // Update Desktop Sidebar
@@ -605,7 +605,7 @@
                 solutionImageUrl: solutionUrl
             };
             try {
-                await fetch(`/api/reports/${activeTask.report_id}/status`, {
+                await fetch(`/api/v2/reports/${activeTask.report_id}/status`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(body)
@@ -624,7 +624,7 @@
             document.getElementById('action-bar').innerHTML = `<div class="btn-action w-full bg-zinc-800 text-gray-400 animate-pulse">UPLOADING...</div>`;
             
             try {
-                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                const res = await fetch('/api/v2/upload', { method: 'POST', body: formData });
                 const data = await res.json();
                 await updateJobStatus('completed', data.url);
             } catch (e) { 

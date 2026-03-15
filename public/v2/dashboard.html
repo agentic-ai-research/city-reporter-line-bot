@@ -1,0 +1,2149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCTH V2 | Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════
+   BAUHAUS SYSTEM — V2 COMMAND CENTER
+   Target: 50" 16:9 display
+   Principles: mechanical, informational,
+   compositional, abstract, functional
+   ═══════════════════════════════════════════ */
+
+:root {
+    /* Bauhaus palette */
+    --black: #0A0A0A;
+    --dark: #111111;
+    --surface: #1A1A1A;
+    --surface-2: #222222;
+    --surface-3: #2A2A2A;
+    --border: #333333;
+    --border-strong: #444444;
+
+    /* Primary triad */
+    --red: #D62828;
+    --blue: #2176FF;
+    --yellow: #F0A500;
+
+    /* Functional */
+    --green: #06D6A0;
+    --orange: #E76F51;
+    --cyan: #00B4D8;
+
+    /* Text */
+    --text-1: #F5F5F5;
+    --text-2: #999999;
+    --text-3: #666666;
+    --text-4: #444444;
+
+    /* Dimensions */
+    --top-bar: 48px;
+    --left-panel: 220px;
+    --bottom-bar: 200px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--black);
+    color: var(--text-1);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    -webkit-font-smoothing: antialiased;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+/* ─── LAYOUT GRID ─── */
+.viewport {
+    display: grid;
+    grid-template-rows: var(--top-bar) 1fr var(--bottom-bar);
+    grid-template-columns: var(--left-panel) 1fr;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* ─── TOP INSTRUMENT BAR ─── */
+.top-bar {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--dark);
+    border-bottom: 2px solid var(--border);
+    z-index: 100;
+    height: var(--top-bar);
+}
+
+.top-bar__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px;
+    height: 100%;
+    border-right: 2px solid var(--border);
+    min-width: var(--left-panel);
+    background: var(--black);
+}
+
+.top-bar__brand-mark {
+    width: 20px;
+    height: 20px;
+    background: var(--red);
+    position: relative;
+}
+.top-bar__brand-mark::after {
+    content: '';
+    position: absolute;
+    top: 4px; left: 4px;
+    width: 12px; height: 12px;
+    border: 2px solid var(--black);
+}
+
+.top-bar__brand-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-1);
+}
+
+.top-bar__segment {
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    height: 100%;
+    border-right: 2px solid var(--border);
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.top-bar__segment--live {
+    gap: 6px;
+}
+
+.live-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--red);
+    animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.top-bar__label {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+.top-bar__value {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-1);
+}
+
+.top-bar__metric {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.top-bar__metric-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.top-bar__metric-label {
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+.top-bar__spacer { flex: 1; }
+
+.top-bar__clock {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text-2);
+    padding: 0 20px;
+}
+
+/* ─── LEFT CONTROL PANEL ─── */
+.left-panel {
+    grid-column: 1;
+    grid-row: 2;
+    background: var(--dark);
+    border-right: 2px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.left-panel::-webkit-scrollbar { width: 3px; }
+.left-panel::-webkit-scrollbar-track { background: transparent; }
+.left-panel::-webkit-scrollbar-thumb { background: var(--border); }
+
+.panel-section {
+    padding: 12px;
+    border-bottom: 2px solid var(--border);
+}
+
+.panel-section:last-child { border-bottom: none; }
+
+.panel-title {
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.panel-title__bar {
+    width: 12px;
+    height: 2px;
+    background: var(--yellow);
+}
+
+/* Filter inputs */
+.filter-input {
+    width: 100%;
+    padding: 7px 8px;
+    font-size: 11px;
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+    outline: none;
+    transition: border-color 0.15s;
+}
+.filter-input:focus { border-color: var(--blue); }
+
+.filter-select {
+    width: 100%;
+    padding: 7px 8px;
+    font-size: 10px;
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+    outline: none;
+    appearance: none;
+    cursor: pointer;
+}
+.filter-select:focus { border-color: var(--blue); }
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.filter-label {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+/* Layer toggles */
+.layer-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    cursor: pointer;
+    user-select: none;
+}
+
+.layer-toggle__box {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border-strong);
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+
+.layer-toggle__box.active {
+    background: var(--blue);
+    border-color: var(--blue);
+}
+
+.layer-toggle__box.active::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--black);
+}
+
+.layer-toggle__label {
+    font-size: 10px;
+    color: var(--text-2);
+    transition: color 0.15s;
+}
+
+.layer-toggle:hover .layer-toggle__label { color: var(--text-1); }
+
+/* Mode buttons */
+.mode-group {
+    display: flex;
+    gap: 0;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 6px 4px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-3);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Space Grotesk', sans-serif;
+}
+.mode-btn + .mode-btn { border-left: none; }
+.mode-btn.active {
+    background: var(--blue);
+    color: var(--black);
+    border-color: var(--blue);
+}
+.mode-btn:hover:not(.active) { color: var(--text-1); }
+
+/* Quick filter chips */
+.chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Space Grotesk', sans-serif;
+}
+.chip.active {
+    border-color: var(--yellow);
+    color: var(--yellow);
+    background: rgba(240, 165, 0, 0.08);
+}
+.chip:hover:not(.active) { color: var(--text-2); border-color: var(--border-strong); }
+
+.chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* Weather block */
+.weather-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 3px 0;
+}
+
+.weather-label {
+    font-size: 9px;
+    color: var(--text-3);
+}
+
+.weather-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-2);
+}
+
+/* Briefing box */
+.briefing-box {
+    padding: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--text-2);
+    line-height: 1.5;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.briefing-box::-webkit-scrollbar { width: 2px; }
+.briefing-box::-webkit-scrollbar-thumb { background: var(--border); }
+
+.btn-analysis {
+    width: 100%;
+    padding: 7px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    background: var(--red);
+    border: none;
+    color: var(--text-1);
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    transition: opacity 0.15s;
+}
+.btn-analysis:hover { opacity: 0.85; }
+.btn-analysis:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ─── MAP CONTAINER ─── */
+.map-area {
+    grid-column: 2;
+    grid-row: 2;
+    position: relative;
+    background: var(--black);
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+    background: var(--black);
+}
+
+/* Map overlays */
+.map-overlay-stats {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 600;
+    display: flex;
+    gap: 0;
+}
+
+.map-stat-block {
+    padding: 8px 12px;
+    background: rgba(10, 10, 10, 0.88);
+    border: 1px solid var(--border);
+    border-right: none;
+    backdrop-filter: blur(8px);
+}
+.map-stat-block:last-child { border-right: 1px solid var(--border); }
+
+.map-stat-block__val {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.map-stat-block__label {
+    font-size: 6.5px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-top: 2px;
+}
+
+/* Map legend */
+.map-legend {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    z-index: 600;
+    background: rgba(10, 10, 10, 0.88);
+    border: 1px solid var(--border);
+    padding: 10px;
+    backdrop-filter: blur(8px);
+    max-width: 260px;
+}
+
+.map-legend__title {
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 6px;
+}
+
+.map-legend__item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+}
+
+.map-legend__dot {
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+}
+
+.map-legend__text {
+    font-size: 9px;
+    color: var(--text-2);
+}
+
+/* Coordinates display */
+.map-coords {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    z-index: 600;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    background: rgba(10, 10, 10, 0.88);
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+}
+
+/* ─── BOTTOM BAR ─── */
+.bottom-bar {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    background: var(--dark);
+    border-top: 3px solid var(--red);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.bottom-bar__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    min-height: 28px;
+}
+
+.bottom-bar__title {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bottom-bar__count {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-2);
+}
+
+.bottom-bar__sort-group {
+    display: flex;
+    gap: 0;
+}
+
+.sort-btn {
+    padding: 3px 8px;
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-3);
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    transition: all 0.15s;
+}
+.sort-btn + .sort-btn { border-left: none; }
+.sort-btn.active { background: var(--surface-2); color: var(--text-1); }
+
+.bottom-bar__feed {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: flex;
+    gap: 0;
+    padding: 8px 12px;
+    scroll-behavior: smooth;
+    align-items: stretch;
+}
+
+.bottom-bar__feed::-webkit-scrollbar { height: 4px; }
+.bottom-bar__feed::-webkit-scrollbar-track { background: var(--black); }
+.bottom-bar__feed::-webkit-scrollbar-thumb { background: var(--border); }
+
+/* ─── REPORT CARD ─── */
+.report-card {
+    flex-shrink: 0;
+    width: 260px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    position: relative;
+    margin-right: 8px;
+}
+
+.report-card:hover { border-color: var(--text-3); }
+.report-card.selected { border-color: var(--blue); }
+
+.report-card__cat-bar {
+    height: 3px;
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.report-card__body {
+    padding: 8px 10px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.report-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.report-card__ticket {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-1);
+}
+
+.report-card__status {
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+}
+
+.report-card__category {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+.report-card__desc {
+    font-size: 10px;
+    color: var(--text-2);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    flex: 1;
+}
+
+.report-card__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 4px;
+    border-top: 1px solid var(--border);
+    margin-top: auto;
+}
+
+.report-card__location {
+    font-size: 8px;
+    color: var(--text-3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+}
+
+.report-card__age {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-3);
+}
+
+.report-card__age--urgent { color: var(--red); }
+
+.report-card__thumb {
+    width: 100%;
+    height: 48px;
+    object-fit: cover;
+    display: block;
+    border-bottom: 1px solid var(--border);
+}
+
+.report-card__urgency-bar {
+    position: absolute;
+    left: 0;
+    top: 3px;
+    bottom: 0;
+    width: 3px;
+}
+
+/* ─── DETAIL PANEL (overlay on map) ─── */
+.detail-overlay {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 380px;
+    height: 100%;
+    background: rgba(17, 17, 17, 0.96);
+    border-left: 2px solid var(--border);
+    z-index: 700;
+    display: none;
+    flex-direction: column;
+    backdrop-filter: blur(12px);
+    overflow: hidden;
+}
+
+.detail-overlay.open { display: flex; }
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border);
+    flex-shrink: 0;
+}
+
+.detail-header__ticket {
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.detail-close {
+    width: 28px;
+    height: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: 'Space Mono', monospace;
+}
+.detail-close:hover { border-color: var(--text-3); color: var(--text-1); }
+
+.detail-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.detail-body::-webkit-scrollbar { width: 3px; }
+.detail-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+.detail-section {
+    margin-bottom: 16px;
+}
+
+.detail-label {
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 4px;
+}
+
+.detail-value {
+    font-size: 12px;
+    color: var(--text-1);
+    line-height: 1.5;
+}
+
+.detail-value--mono {
+    font-family: 'Space Mono', monospace;
+}
+
+.detail-img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+}
+
+.detail-actions {
+    padding: 12px 16px;
+    border-top: 2px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.detail-action-btn {
+    width: 100%;
+    padding: 8px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-1);
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    transition: all 0.15s;
+}
+.detail-action-btn:hover { border-color: var(--text-3); }
+.detail-action-btn--primary { background: var(--blue); border-color: var(--blue); color: var(--black); }
+.detail-action-btn--primary:hover { opacity: 0.85; }
+
+/* Status workflow select */
+.detail-select {
+    width: 100%;
+    padding: 7px 8px;
+    font-size: 11px;
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+    outline: none;
+    appearance: none;
+}
+
+/* ─── MAP MARKER STYLES ─── */
+.bauhaus-marker {
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--text-1);
+    position: relative;
+}
+
+.bauhaus-marker--urgent {
+    animation: urgent-pulse 1.5s infinite;
+}
+
+@keyframes urgent-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(214, 40, 40, 0.6); }
+    50% { box-shadow: 0 0 0 8px rgba(214, 40, 40, 0); }
+}
+
+.bauhaus-marker--completed {
+    opacity: 0.5;
+}
+
+.bauhaus-marker-thumb {
+    width: 56px;
+    height: 56px;
+    border: 2px solid var(--text-1);
+    object-fit: cover;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* ─── LEAFLET OVERRIDES ─── */
+.leaflet-control-zoom a {
+    background: var(--dark) !important;
+    color: var(--text-2) !important;
+    border-color: var(--border) !important;
+    border-radius: 0 !important;
+    font-family: 'Space Mono', monospace !important;
+    width: 28px !important;
+    height: 28px !important;
+    line-height: 28px !important;
+}
+.leaflet-control-zoom a:hover { color: var(--text-1) !important; }
+.leaflet-control-zoom { border: none !important; border-radius: 0 !important; }
+
+.leaflet-popup-content-wrapper {
+    background: rgba(17, 17, 17, 0.95) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 0 !important;
+    color: var(--text-1) !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+}
+.leaflet-popup-tip { background: rgba(17,17,17,0.95) !important; }
+.leaflet-popup-content { font-size: 11px !important; line-height: 1.5 !important; margin: 10px 12px !important; }
+.leaflet-popup-close-button { color: var(--text-3) !important; }
+
+/* ─── SCROLLBAR GLOBAL ─── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); }
+
+/* ─── UTILITY ─── */
+.hidden { display: none !important; }
+.text-red { color: var(--red); }
+.text-blue { color: var(--blue); }
+.text-yellow { color: var(--yellow); }
+.text-green { color: var(--green); }
+.text-orange { color: var(--orange); }
+
+/* ─── LOADING ─── */
+.loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 10, 0.92);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.loading-blocks {
+    display: flex;
+    gap: 6px;
+}
+
+.loading-block {
+    width: 12px;
+    height: 12px;
+    animation: block-pulse 1.2s infinite;
+}
+.loading-block:nth-child(1) { background: var(--red); animation-delay: 0s; }
+.loading-block:nth-child(2) { background: var(--blue); animation-delay: 0.2s; }
+.loading-block:nth-child(3) { background: var(--yellow); animation-delay: 0.4s; }
+
+@keyframes block-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(0.5); opacity: 0.3; }
+}
+
+.loading-text {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+/* ─── RESPONSIVE (for non-50" usage) ─── */
+@media (max-width: 1200px) {
+    :root {
+        --left-panel: 180px;
+        --bottom-bar: 170px;
+    }
+    .report-card { width: 220px; }
+}
+
+@media (max-width: 768px) {
+    .viewport {
+        grid-template-columns: 1fr;
+        grid-template-rows: var(--top-bar) 1fr var(--bottom-bar);
+    }
+    .left-panel {
+        position: fixed;
+        left: -100%;
+        top: var(--top-bar);
+        bottom: var(--bottom-bar);
+        width: 260px;
+        z-index: 800;
+        transition: left 0.3s;
+    }
+    .left-panel.open { left: 0; }
+    .map-area { grid-column: 1; }
+    .mobile-toggle { display: flex !important; }
+}
+
+.mobile-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    cursor: pointer;
+    font-size: 14px;
+    margin-left: 8px;
+}
+</style>
+</head>
+
+<body>
+<div class="viewport">
+
+    <!-- ═══ TOP INSTRUMENT BAR ═══ -->
+    <div class="top-bar">
+        <div class="top-bar__brand">
+            <div class="top-bar__brand-mark"></div>
+            <span class="top-bar__brand-text">SCTH V2</span>
+        </div>
+
+        <button class="mobile-toggle" onclick="document.querySelector('.left-panel').classList.toggle('open')">&#9776;</button>
+
+        <div class="top-bar__segment top-bar__segment--live">
+            <div class="live-dot"></div>
+            <span class="top-bar__label" style="color: var(--red);">LIVE</span>
+        </div>
+
+        <div class="top-bar__segment">
+            <div class="top-bar__metric">
+                <span class="top-bar__metric-val" id="stat-total">—</span>
+                <span class="top-bar__metric-label">REPORTS</span>
+            </div>
+        </div>
+
+        <div class="top-bar__segment">
+            <div class="top-bar__metric">
+                <span class="top-bar__metric-val text-green" id="stat-solved">—</span>
+                <span class="top-bar__metric-label">RESOLVED</span>
+            </div>
+        </div>
+
+        <div class="top-bar__segment">
+            <div class="top-bar__metric">
+                <span class="top-bar__metric-val text-red" id="stat-urgent">—</span>
+                <span class="top-bar__metric-label">URGENT</span>
+            </div>
+        </div>
+
+        <div class="top-bar__segment">
+            <div class="top-bar__metric">
+                <span class="top-bar__metric-val text-yellow" id="stat-open">—</span>
+                <span class="top-bar__metric-label">OPEN</span>
+            </div>
+        </div>
+
+        <div class="top-bar__segment">
+            <div class="top-bar__metric">
+                <span class="top-bar__metric-val text-blue" id="stat-sla">—</span>
+                <span class="top-bar__metric-label">SLA RISK</span>
+            </div>
+        </div>
+
+        <div class="top-bar__spacer"></div>
+        <div class="top-bar__clock" id="clock">00:00:00</div>
+    </div>
+
+    <!-- ═══ LEFT CONTROL PANEL ═══ -->
+    <div class="left-panel">
+
+        <!-- Search -->
+        <div class="panel-section">
+            <div class="panel-title"><span class="panel-title__bar"></span>SEARCH</div>
+            <input class="filter-input" type="text" id="filter-search" placeholder="Ticket, location, keyword..." />
+        </div>
+
+        <!-- Filters -->
+        <div class="panel-section">
+            <div class="panel-title"><span class="panel-title__bar"></span>FILTERS</div>
+            <div class="filter-group">
+                <label class="filter-label">Category</label>
+                <select class="filter-select" id="filter-category">
+                    <option value="">All categories</option>
+                </select>
+                <label class="filter-label" style="margin-top:4px;">Status</label>
+                <select class="filter-select" id="filter-status">
+                    <option value="">All statuses</option>
+                    <option value="received">Received</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                </select>
+                <label class="filter-label" style="margin-top:4px;">Urgency</label>
+                <select class="filter-select" id="filter-urgency">
+                    <option value="">All</option>
+                    <option value="สูง">High</option>
+                    <option value="ปานกลาง">Medium</option>
+                    <option value="ต่ำ">Low</option>
+                </select>
+                <label class="filter-label" style="margin-top:4px;">Team</label>
+                <select class="filter-select" id="filter-team">
+                    <option value="">All teams</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Quick Filters -->
+        <div class="panel-section">
+            <div class="panel-title"><span class="panel-title__bar"></span>QUICK</div>
+            <div class="chip-row">
+                <button class="chip" data-quick="urgent">URGENT</button>
+                <button class="chip" data-quick="unassigned">NO TEAM</button>
+                <button class="chip" data-quick="exif">EXIF</button>
+            </div>
+        </div>
+
+        <!-- Map Mode -->
+        <div class="panel-section">
+            <div class="panel-title"><span class="panel-title__bar"></span>MAP MODE</div>
+            <div class="mode-group">
+                <button class="mode-btn active" data-mode="unsolved">ACTIVE</button>
+                <button class="mode-btn" data-mode="solved">ARCHIVE</button>
+                <button class="mode-btn" data-mode="all">ALL</button>
+            </div>
+        </div>
+
+        <!-- Layers -->
+        <div class="panel-section">
+            <div class="panel-title"><span class="panel-title__bar"></span>LAYERS</div>
+            <div class="layer-toggle" data-layer="satellite">
+                <div class="layer-toggle__box active" id="tog-satellite"></div>
+                <span class="layer-toggle__label">Satellite</span>
+            </div>
+            <div class="layer-toggle" data-layer="nasa">
+                <div class="layer-toggle__box" id="tog-nasa"></div>
+                <span class="layer-toggle__label">NASA True Color</span>
+            </div>
+            <div class="layer-toggle" data-layer="infrared">
+                <div class="layer-toggle__box" id="tog-infrared"></div>
+                <span class="layer-toggle__label">Himawari IR Cloud</span>
+            </div>
+            <div class="layer-toggle" data-layer="terrain">
+                <div class="layer-toggle__box" id="tog-terrain"></div>
+                <span class="layer-toggle__label">Terrain Relief</span>
+            </div>
+            <div class="layer-toggle" data-layer="heatmap">
+                <div class="layer-toggle__box" id="tog-heatmap"></div>
+                <span class="layer-toggle__label">Category Heatmap</span>
+            </div>
+            <div class="layer-toggle" data-layer="grid">
+                <div class="layer-toggle__box" id="tog-grid"></div>
+                <span class="layer-toggle__label">Distance Grid 1km</span>
+            </div>
+            <div class="layer-toggle" data-layer="searoutes">
+                <div class="layer-toggle__box" id="tog-searoutes"></div>
+                <span class="layer-toggle__label">Sea Routes</span>
+            </div>
+            <div class="layer-toggle" data-layer="aqi">
+                <div class="layer-toggle__box" id="tog-aqi"></div>
+                <span class="layer-toggle__label">AQI Stations</span>
+            </div>
+        </div>
+
+        <!-- Weather -->
+        <div class="panel-section" id="weather-section">
+            <div class="panel-title"><span class="panel-title__bar"></span>WEATHER / MARINE</div>
+            <div id="weather-content" style="color: var(--text-3); font-size: 9px;">Loading...</div>
+        </div>
+
+        <!-- Briefing -->
+        <div class="panel-section">
+            <div class="panel-title"><span class="panel-title__bar"></span>BRIEFING</div>
+            <div class="briefing-box" id="briefing-content">Awaiting data...</div>
+            <button class="btn-analysis" id="btn-briefing" style="margin-top:6px;" disabled>RUN ANALYSIS</button>
+        </div>
+
+        <!-- Links -->
+        <div class="panel-section" style="margin-top:auto;">
+            <a href="/v2/staff.html" style="font-size:9px; color:var(--text-3); text-decoration:none;">STAFF PORTAL</a>
+            <span style="margin:0 6px; color:var(--text-4);">|</span>
+            <a href="/api/reports/geojson" style="font-size:9px; color:var(--text-3); text-decoration:none;">GEOJSON</a>
+        </div>
+    </div>
+
+    <!-- ═══ MAP ═══ -->
+    <div class="map-area">
+        <div id="map"></div>
+
+        <!-- Stats overlay on map -->
+        <div class="map-overlay-stats">
+            <div class="map-stat-block">
+                <div class="map-stat-block__val text-green" id="stat-geo-coverage">—</div>
+                <div class="map-stat-block__label">GEO COVERAGE</div>
+            </div>
+            <div class="map-stat-block">
+                <div class="map-stat-block__val" id="stat-unassigned">—</div>
+                <div class="map-stat-block__label">UNASSIGNED</div>
+            </div>
+        </div>
+
+        <!-- Coordinates -->
+        <div class="map-coords" id="map-coords">0.0000, 0.0000</div>
+
+        <!-- Legend -->
+        <div class="map-legend" id="map-legend"></div>
+
+        <!-- Detail panel -->
+        <div class="detail-overlay" id="detail-panel">
+            <div class="detail-header">
+                <span class="detail-header__ticket" id="detail-ticket">—</span>
+                <button class="detail-close" onclick="closeDetail()">&times;</button>
+            </div>
+            <div class="detail-body" id="detail-body"></div>
+            <div class="detail-actions" id="detail-actions"></div>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-blocks">
+                <div class="loading-block"></div>
+                <div class="loading-block"></div>
+                <div class="loading-block"></div>
+            </div>
+            <div class="loading-text">INITIALIZING COMMAND CENTER</div>
+        </div>
+    </div>
+
+    <!-- ═══ BOTTOM BAR — REPORT FEED ═══ -->
+    <div class="bottom-bar">
+        <div class="bottom-bar__header">
+            <div class="bottom-bar__title">
+                <span style="width:8px;height:8px;background:var(--red);display:inline-block;"></span>
+                REPORTS FEED
+                <span class="bottom-bar__count" id="feed-count">0 items</span>
+            </div>
+            <div class="bottom-bar__sort-group">
+                <button class="sort-btn active" data-sort="priority">PRIORITY</button>
+                <button class="sort-btn" data-sort="newest">NEWEST</button>
+                <button class="sort-btn" data-sort="oldest">OLDEST</button>
+                <button class="sort-btn" data-sort="aging">AGING</button>
+            </div>
+        </div>
+        <div class="bottom-bar__feed" id="report-feed"></div>
+    </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT — DATA ENGINE
+     ═══════════════════════════════════════════ -->
+<script>
+(function() {
+'use strict';
+
+// ─── CONFIGURATION ───
+const API_BASE = '/api/v2';
+const PHUKET_CENTER = [7.8804, 98.3923];
+const DEFAULT_CENTER = [13.75, 100.5];
+const DEFAULT_ZOOM = 6;
+const SLA_HOURS = 48;
+const CACHE_TTL = 60000;
+
+const CATEGORY_COLORS = {
+    'ถนน/ทางเท้า': '#D62828',
+    'น้ำท่วม/ท่อระบาย': '#2176FF',
+    'ไฟฟ้า/ไฟส่องสว่าง': '#F0A500',
+    'ขยะ/ความสะอาด': '#06D6A0',
+    'เสียงรบกวน': '#E76F51',
+    'สิ่งแวดล้อม': '#2A9D8F',
+    'จราจร': '#FF6B6B',
+    'ความปลอดภัย': '#B5179E',
+    'อื่นๆ': '#999999'
+};
+
+const STATUS_MAP = {
+    'received': { label: 'RECEIVED', color: '#2176FF' },
+    'assigned': { label: 'ASSIGNED', color: '#F0A500' },
+    'in_progress': { label: 'IN PROGRESS', color: '#E76F51' },
+    'completed': { label: 'COMPLETED', color: '#06D6A0' }
+};
+
+// ─── STATE ───
+let allReports = [];
+let filteredReports = [];
+let map, markersLayer, heatLayers = {};
+let selectedReport = null;
+let mapMode = 'unsolved';
+let sortMode = 'priority';
+let quickFilters = {};
+let layerState = {
+    satellite: true, nasa: false, infrared: false, terrain: false,
+    heatmap: false, grid: false, searoutes: false, aqi: false
+};
+let contextLayers = {};
+let gridLayer = null;
+let seaRoutesLayer = null;
+let aqiLayer = null;
+let marinePorts = [];
+
+// ─── CLOCK ───
+function updateClock() {
+    const now = new Date();
+    const opts = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' };
+    document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB', opts) + ' ICT';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── MAP INITIALIZATION ───
+function initMap() {
+    map = L.map('map', {
+        center: DEFAULT_CENTER,
+        zoom: DEFAULT_ZOOM,
+        zoomControl: true,
+        maxBounds: [[-82, -180], [85, 180]],
+        maxBoundsViscosity: 1.0,
+        minZoom: 3,
+        maxZoom: 20
+    });
+
+    // Custom panes
+    map.createPane('satellitePane').style.zIndex = 200;
+    map.createPane('nasaPane').style.zIndex = 210;
+    map.createPane('terrainPane').style.zIndex = 220;
+    map.createPane('infraredPane').style.zIndex = 225;
+    map.createPane('gridPane').style.zIndex = 240;
+    map.getPane('gridPane').style.pointerEvents = 'none';
+    map.createPane('seaRoutePane').style.zIndex = 260;
+    map.createPane('aqiPane').style.zIndex = 280;
+    map.createPane('heatPane').style.zIndex = 300;
+    map.createPane('markerPane').style.zIndex = 400;
+
+    // Dark base (underneath satellite)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+        attribution: '',
+        maxZoom: 20
+    }).addTo(map);
+
+    // Satellite layer (DEFAULT ON)
+    contextLayers.satellite = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { pane: 'satellitePane', maxZoom: 20, opacity: 1 }
+    ).addTo(map);
+
+    // NASA True Color
+    const today = new Date().toISOString().split('T')[0];
+    contextLayers.nasa = L.tileLayer.wms(
+        'https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi',
+        { layers: 'MODIS_Terra_CorrectedReflectance_TrueColor', pane: 'nasaPane', format: 'image/png', transparent: true, time: today, opacity: 0.85 }
+    );
+
+    // Himawari IR
+    contextLayers.infrared = L.tileLayer.wms(
+        'https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi',
+        { layers: 'Himawari_AHI_Band13_Clean_Infrared', pane: 'infraredPane', format: 'image/png', transparent: true, time: today, opacity: 0.6 }
+    );
+
+    // Terrain
+    contextLayers.terrain = L.tileLayer(
+        'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        { pane: 'terrainPane', maxZoom: 17, opacity: 0.6 }
+    );
+
+    // Labels on top
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20, pane: 'markerPane', opacity: 0.7
+    }).addTo(map);
+
+    // Markers layer group
+    markersLayer = L.layerGroup().addTo(map);
+
+    // Coordinate display
+    map.on('mousemove', function(e) {
+        document.getElementById('map-coords').textContent =
+            e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4);
+    });
+
+    map.on('zoomend moveend', function() {
+        if (layerState.grid) renderGrid();
+        if (layerState.aqi) renderAQI();
+    });
+}
+
+// ─── LAYER MANAGEMENT ───
+function toggleLayer(name) {
+    layerState[name] = !layerState[name];
+    var box = document.getElementById('tog-' + name);
+    if (box) box.classList.toggle('active', layerState[name]);
+
+    if (['satellite', 'nasa', 'infrared', 'terrain'].indexOf(name) !== -1) {
+        if (layerState[name]) {
+            contextLayers[name].addTo(map);
+        } else {
+            map.removeLayer(contextLayers[name]);
+        }
+    } else if (name === 'heatmap') {
+        renderHeatmaps();
+    } else if (name === 'grid') {
+        if (layerState.grid) renderGrid();
+        else if (gridLayer) { map.removeLayer(gridLayer); gridLayer = null; }
+    } else if (name === 'searoutes') {
+        if (layerState.searoutes) renderSeaRoutes();
+        else if (seaRoutesLayer) { map.removeLayer(seaRoutesLayer); seaRoutesLayer = null; }
+    } else if (name === 'aqi') {
+        if (layerState.aqi) renderAQI();
+        else if (aqiLayer) { map.removeLayer(aqiLayer); aqiLayer = null; }
+    }
+    updateLegend();
+}
+
+// Layer toggle click handlers
+document.querySelectorAll('.layer-toggle').forEach(function(el) {
+    el.addEventListener('click', function() { toggleLayer(el.dataset.layer); });
+});
+
+// ─── DATA FETCHING ───
+async function fetchData() {
+    try {
+        var reportsRes = await fetch(API_BASE + '/reports');
+        var warningsRes;
+        try { warningsRes = await fetch(API_BASE + '/early-warnings'); } catch(e) { warningsRes = { ok: false }; }
+
+        if (!reportsRes.ok) throw new Error('Failed to fetch reports');
+        allReports = await reportsRes.json();
+
+        // Update the global reference
+        window.allReports = allReports;
+
+        render();
+        document.getElementById('loading-overlay').classList.add('hidden');
+        document.getElementById('btn-briefing').disabled = false;
+    } catch (err) {
+        console.error('Fetch error:', err);
+        document.getElementById('loading-overlay').querySelector('.loading-text').textContent = 'DATA ERROR — RETRYING';
+        setTimeout(fetchData, 5000);
+    }
+}
+
+async function fetchMarinePorts() {
+    try {
+        var res = await fetch(API_BASE + '/marine/phuket-ports');
+        if (res.ok) marinePorts = await res.json();
+    } catch(e) {}
+}
+
+// ─── FILTERING ───
+function getFilteredReports() {
+    var search = document.getElementById('filter-search').value.toLowerCase();
+    var cat = document.getElementById('filter-category').value;
+    var status = document.getElementById('filter-status').value;
+    var urgency = document.getElementById('filter-urgency').value;
+    var team = document.getElementById('filter-team').value;
+
+    var reports = allReports.slice();
+
+    // Deduplicate
+    var seen = {};
+    reports = reports.filter(function(r) {
+        var key = r.report_id || r.id;
+        if (seen[key]) return false;
+        seen[key] = true;
+        return true;
+    });
+
+    // Map mode
+    if (mapMode === 'unsolved') {
+        reports = reports.filter(function(r) { return r.status !== 'completed'; });
+    } else if (mapMode === 'solved') {
+        reports = reports.filter(function(r) { return r.status === 'completed'; });
+    }
+
+    // Text search
+    if (search) {
+        reports = reports.filter(function(r) {
+            var haystack = [r.ticket_number, r.description, r.location_text, r.nickname, r.problem_type, r.team_name, r.ai_summary].filter(Boolean).join(' ').toLowerCase();
+            return haystack.indexOf(search) !== -1;
+        });
+    }
+
+    // Dropdowns
+    if (cat) reports = reports.filter(function(r) { return r.problem_type === cat; });
+    if (status) reports = reports.filter(function(r) { return r.status === status; });
+    if (urgency) reports = reports.filter(function(r) { return r.urgency === urgency; });
+    if (team) reports = reports.filter(function(r) { return r.team_name === team; });
+
+    // Quick filters
+    if (quickFilters.urgent) reports = reports.filter(function(r) { return r.urgency === 'สูง'; });
+    if (quickFilters.unassigned) reports = reports.filter(function(r) { return !r.team_name; });
+    if (quickFilters.exif) reports = reports.filter(function(r) { return r.photo_metadata; });
+
+    // Sort
+    var urgOrd = { 'สูง': 0, 'ปานกลาง': 1, 'ต่ำ': 2 };
+    var statOrd = { 'received': 0, 'assigned': 1, 'in_progress': 2, 'completed': 3 };
+    reports.sort(function(a, b) {
+        if (sortMode === 'priority') {
+            var ua = urgOrd[a.urgency] != null ? urgOrd[a.urgency] : 1;
+            var ub = urgOrd[b.urgency] != null ? urgOrd[b.urgency] : 1;
+            if (ua !== ub) return ua - ub;
+            var sa = statOrd[a.status] || 0;
+            var sb = statOrd[b.status] || 0;
+            if (sa !== sb) return sa - sb;
+            return new Date(b.timestamp) - new Date(a.timestamp);
+        } else if (sortMode === 'newest') {
+            return new Date(b.timestamp) - new Date(a.timestamp);
+        } else if (sortMode === 'oldest') {
+            return new Date(a.timestamp) - new Date(b.timestamp);
+        } else if (sortMode === 'aging') {
+            var ageA = a.status === 'completed' ? -1 : (Date.now() - new Date(a.timestamp)) / 3600000;
+            var ageB = b.status === 'completed' ? -1 : (Date.now() - new Date(b.timestamp)) / 3600000;
+            return ageB - ageA;
+        }
+        return 0;
+    });
+
+    return reports;
+}
+
+// ─── RENDER ───
+function render() {
+    filteredReports = getFilteredReports();
+    updateStats();
+    populateFilterOptions();
+    renderMarkers();
+    renderFeed();
+    if (layerState.heatmap) renderHeatmaps();
+    updateLegend();
+}
+
+function updateStats() {
+    var total = allReports.length;
+    var completed = allReports.filter(function(r) { return r.status === 'completed'; }).length;
+    var active = allReports.filter(function(r) { return r.status !== 'completed'; });
+    var urgent = active.filter(function(r) { return r.urgency === 'สูง'; }).length;
+    var open = active.length;
+    var sla = active.filter(function(r) {
+        return (Date.now() - new Date(r.timestamp)) / 3600000 > SLA_HOURS;
+    }).length;
+    var unassigned = active.filter(function(r) { return !r.team_name; }).length;
+    var withGeo = allReports.filter(function(r) { return r.latitude && r.longitude; }).length;
+    var geoPct = total > 0 ? Math.round(withGeo / total * 100) + '%' : '—';
+
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-solved').textContent = total > 0 ? Math.round(completed / total * 100) + '%' : '—';
+    document.getElementById('stat-urgent').textContent = urgent;
+    document.getElementById('stat-open').textContent = open;
+    document.getElementById('stat-sla').textContent = sla;
+    document.getElementById('stat-unassigned').textContent = unassigned;
+    document.getElementById('stat-geo-coverage').textContent = geoPct;
+}
+
+function populateFilterOptions() {
+    var catSet = {};
+    var teamSet = {};
+    allReports.forEach(function(r) {
+        if (r.problem_type) catSet[r.problem_type] = true;
+        if (r.team_name) teamSet[r.team_name] = true;
+    });
+
+    var catEl = document.getElementById('filter-category');
+    var teamEl = document.getElementById('filter-team');
+    var catVal = catEl.value;
+    var teamVal = teamEl.value;
+
+    catEl.innerHTML = '<option value="">All categories</option>';
+    Object.keys(catSet).sort().forEach(function(c) {
+        catEl.innerHTML += '<option value="' + c + '"' + (c === catVal ? ' selected' : '') + '>' + c + '</option>';
+    });
+
+    teamEl.innerHTML = '<option value="">All teams</option>';
+    Object.keys(teamSet).sort().forEach(function(t) {
+        teamEl.innerHTML += '<option value="' + t + '"' + (t === teamVal ? ' selected' : '') + '>' + t + '</option>';
+    });
+}
+
+// ─── MAP MARKERS ───
+function renderMarkers() {
+    markersLayer.clearLayers();
+
+    var zoom = map.getZoom();
+    var showThumbs = zoom >= 15;
+
+    filteredReports.forEach(function(r) {
+        if (!r.latitude || !r.longitude) return;
+
+        var catColor = CATEGORY_COLORS[r.problem_type] || '#999';
+        var isUrgent = r.urgency === 'สูง' && r.status !== 'completed';
+        var isCompleted = r.status === 'completed';
+        var marker;
+
+        if (showThumbs && r.image_url) {
+            var icon = L.divIcon({
+                className: '',
+                html: '<img src="' + r.image_url + '" class="bauhaus-marker-thumb" style="border-color:' + catColor + '" onerror="this.style.display=\'none\'"/>',
+                iconSize: [56, 56],
+                iconAnchor: [28, 28]
+            });
+            marker = L.marker([r.latitude, r.longitude], { icon: icon, pane: 'markerPane' });
+        } else {
+            var size = zoom >= 15 ? 14 : zoom >= 10 ? 10 : 8;
+            var urgentClass = isUrgent ? ' bauhaus-marker--urgent' : '';
+            var completedClass = isCompleted ? ' bauhaus-marker--completed' : '';
+            var borderColor = isCompleted ? '#06D6A0' : '#fff';
+            var divIcon = L.divIcon({
+                className: '',
+                html: '<div class="bauhaus-marker' + urgentClass + completedClass + '" style="width:' + size + 'px;height:' + size + 'px;background:' + catColor + ';border-color:' + borderColor + '"></div>',
+                iconSize: [size, size],
+                iconAnchor: [size/2, size/2]
+            });
+            marker = L.marker([r.latitude, r.longitude], { icon: divIcon, pane: 'markerPane' });
+        }
+
+        marker.bindPopup(
+            '<div style="min-width:180px">' +
+            '<div style="font-family:\'Space Mono\',monospace;font-weight:700;font-size:13px;margin-bottom:4px;">#' + (r.ticket_number || '—') + '</div>' +
+            '<div style="font-size:10px;color:#999;margin-bottom:6px;">' + (r.problem_type || '—') + '</div>' +
+            '<div style="font-size:11px;line-height:1.5;">' + (r.ai_summary || r.description || '—') + '</div>' +
+            (r.location_text ? '<div style="font-size:9px;color:#666;margin-top:6px;">' + r.location_text + '</div>' : '') +
+            '</div>'
+        );
+
+        (function(report) {
+            marker.on('click', function() { openDetail(report); });
+        })(r);
+
+        markersLayer.addLayer(marker);
+    });
+}
+
+// ─── HEATMAP ───
+function renderHeatmaps() {
+    Object.values(heatLayers).forEach(function(l) { map.removeLayer(l); });
+    heatLayers = {};
+
+    if (!layerState.heatmap) return;
+
+    var byCategory = {};
+    filteredReports.forEach(function(r) {
+        if (!r.latitude || !r.longitude) return;
+        var cat = r.problem_type || 'อื่นๆ';
+        if (!byCategory[cat]) byCategory[cat] = [];
+        byCategory[cat].push([r.latitude, r.longitude, 1]);
+    });
+
+    Object.keys(byCategory).forEach(function(cat) {
+        var points = byCategory[cat];
+        if (points.length === 0) return;
+        var color = CATEGORY_COLORS[cat] || '#999';
+        heatLayers[cat] = L.heatLayer(points, {
+            radius: 80, blur: 40, maxZoom: 17, minOpacity: 0.2,
+            gradient: { 0: 'transparent', 0.4: color + '44', 0.7: color + '88', 1: color },
+            pane: 'heatPane'
+        }).addTo(map);
+    });
+}
+
+// ─── DISTANCE GRID ───
+function renderGrid() {
+    if (gridLayer) { map.removeLayer(gridLayer); gridLayer = null; }
+    if (map.getZoom() < 11) return;
+
+    var bounds = map.getBounds();
+    var kmPerDegLat = 111.32;
+    var kmPerDegLng = 111.32 * Math.cos(bounds.getCenter().lat * Math.PI / 180);
+    var stepLat = 1 / kmPerDegLat;
+    var stepLng = 1 / kmPerDegLng;
+
+    var latMin = Math.floor(bounds.getSouth() / stepLat) * stepLat;
+    var latMax = Math.ceil(bounds.getNorth() / stepLat) * stepLat;
+    var lngMin = Math.floor(bounds.getWest() / stepLng) * stepLng;
+    var lngMax = Math.ceil(bounds.getEast() / stepLng) * stepLng;
+
+    var cols = Math.round((lngMax - lngMin) / stepLng);
+    var rows = Math.round((latMax - latMin) / stepLat);
+    if (cols * rows > 200) return;
+
+    gridLayer = L.layerGroup([], { pane: 'gridPane' });
+
+    for (var lat = latMin; lat <= latMax; lat += stepLat) {
+        var isMajorLat = Math.abs(Math.round(lat / (stepLat * 5)) * stepLat * 5 - lat) < stepLat * 0.1;
+        gridLayer.addLayer(L.polyline([[lat, lngMin], [lat, lngMax]], {
+            color: isMajorLat ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+            weight: isMajorLat ? 1 : 0.5, pane: 'gridPane'
+        }));
+    }
+
+    for (var lng = lngMin; lng <= lngMax; lng += stepLng) {
+        var isMajorLng = Math.abs(Math.round(lng / (stepLng * 5)) * stepLng * 5 - lng) < stepLng * 0.1;
+        gridLayer.addLayer(L.polyline([[latMin, lng], [latMax, lng]], {
+            color: isMajorLng ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+            weight: isMajorLng ? 1 : 0.5, pane: 'gridPane'
+        }));
+    }
+
+    gridLayer.addTo(map);
+}
+
+// ─── SEA ROUTES ───
+var SEA_ROUTES = [
+    { name: 'Rassada – Phi Phi', type: 'regional', coords: [[7.8628, 98.3725], [7.7320, 98.5600], [7.6890, 98.7180], [7.7400, 98.7720]] },
+    { name: 'Rassada – Koh Lanta', type: 'regional', coords: [[7.8628, 98.3725], [7.7650, 98.4200], [7.6280, 98.5400], [7.5400, 98.6200]] },
+    { name: 'Chalong – Racha Yai', type: 'island', coords: [[7.8120, 98.3580], [7.6250, 98.3800]] },
+    { name: 'Ao Po – Koh Yao', type: 'island', coords: [[8.0580, 98.4800], [8.0840, 98.5800], [8.1200, 98.6200]] },
+    { name: 'Patong – Coral Island', type: 'island', coords: [[7.8870, 98.2800], [7.7650, 98.3700]] },
+    { name: 'Rassada – Koh Racha Noi', type: 'offshore', coords: [[7.8628, 98.3725], [7.5050, 98.2200], [7.4900, 98.1900]] },
+    { name: 'Phuket – Similan', type: 'offshore', coords: [[7.8800, 98.3100], [8.2800, 97.8400], [8.5800, 97.6500]] },
+    { name: 'Rassada – Krabi Ao Nang', type: 'regional', coords: [[7.8628, 98.3725], [7.9100, 98.5200], [7.9600, 98.7200], [8.0200, 98.8200]] },
+    { name: 'Phuket – Langkawi', type: 'offshore', coords: [[7.7600, 98.3400], [7.2000, 98.0000], [6.5200, 99.5600]] }
+];
+
+function renderSeaRoutes() {
+    if (seaRoutesLayer) { map.removeLayer(seaRoutesLayer); seaRoutesLayer = null; }
+
+    seaRoutesLayer = L.layerGroup([], { pane: 'seaRoutePane' });
+
+    var typeStyles = {
+        regional: { color: '#2176FF', weight: 2, dashArray: '8,4' },
+        island: { color: '#06D6A0', weight: 1.5, dashArray: '4,4' },
+        offshore: { color: '#F0A500', weight: 2, dashArray: '12,6' }
+    };
+
+    SEA_ROUTES.forEach(function(route) {
+        var style = typeStyles[route.type] || typeStyles.regional;
+        var line = L.polyline(route.coords, {
+            color: style.color, weight: style.weight, dashArray: style.dashArray,
+            opacity: 0.7, pane: 'seaRoutePane'
+        });
+        line.bindTooltip(route.name, { className: '', sticky: true });
+        seaRoutesLayer.addLayer(line);
+
+        [route.coords[0], route.coords[route.coords.length - 1]].forEach(function(coord) {
+            seaRoutesLayer.addLayer(L.circleMarker(coord, {
+                radius: 3, color: style.color, fillColor: style.color, fillOpacity: 1,
+                weight: 1, pane: 'seaRoutePane'
+            }));
+        });
+    });
+
+    seaRoutesLayer.addTo(map);
+}
+
+// ─── AQI ───
+var AQI_BREAKPOINTS = [
+    { lo: 0, hi: 12, ilo: 0, ihi: 50 },
+    { lo: 12.1, hi: 35.4, ilo: 51, ihi: 100 },
+    { lo: 35.5, hi: 55.4, ilo: 101, ihi: 150 },
+    { lo: 55.5, hi: 150.4, ilo: 151, ihi: 200 },
+    { lo: 150.5, hi: 250.4, ilo: 201, ihi: 300 },
+    { lo: 250.5, hi: 500, ilo: 301, ihi: 500 }
+];
+
+function pm25ToAqi(pm) {
+    for (var i = 0; i < AQI_BREAKPOINTS.length; i++) {
+        var bp = AQI_BREAKPOINTS[i];
+        if (pm >= bp.lo && pm <= bp.hi) {
+            return Math.round((bp.ihi - bp.ilo) / (bp.hi - bp.lo) * (pm - bp.lo) + bp.ilo);
+        }
+    }
+    return pm > 500 ? 500 : 0;
+}
+
+function aqiColor(aqi) {
+    if (aqi <= 50) return '#06D6A0';
+    if (aqi <= 100) return '#F0A500';
+    if (aqi <= 150) return '#E76F51';
+    if (aqi <= 200) return '#D62828';
+    return '#B5179E';
+}
+
+async function renderAQI() {
+    if (aqiLayer) { map.removeLayer(aqiLayer); aqiLayer = null; }
+
+    var bounds = map.getBounds();
+    var cols = 4, rows = 3;
+    var latStep = (bounds.getNorth() - bounds.getSouth()) / rows;
+    var lngStep = (bounds.getEast() - bounds.getWest()) / cols;
+
+    aqiLayer = L.layerGroup([], { pane: 'aqiPane' });
+
+    var points = [];
+    for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+            points.push({
+                lat: bounds.getSouth() + latStep * (r + 0.5),
+                lng: bounds.getWest() + lngStep * (c + 0.5)
+            });
+        }
+    }
+
+    var results = await Promise.allSettled(points.map(async function(p) {
+        var url = 'https://air-quality-api.open-meteo.com/v1/air-quality?latitude=' + p.lat + '&longitude=' + p.lng + '&current=pm2_5';
+        var res = await fetch(url);
+        var data = await res.json();
+        var pm25 = data && data.current ? data.current.pm2_5 : null;
+        if (pm25 != null) return { lat: p.lat, lng: p.lng, pm25: pm25 };
+        return null;
+    }));
+
+    results.forEach(function(r) {
+        if (r.status !== 'fulfilled' || !r.value) return;
+        var lat = r.value.lat, lng = r.value.lng, pm25 = r.value.pm25;
+        var aqi = pm25ToAqi(pm25);
+        var color = aqiColor(aqi);
+        var radius = Math.max(7, Math.min(16, aqi / 8));
+
+        aqiLayer.addLayer(L.circleMarker([lat, lng], {
+            radius: radius, color: color, fillColor: color, fillOpacity: 0.6,
+            weight: 1, pane: 'aqiPane'
+        }).bindTooltip('AQI: ' + aqi + ' (PM2.5: ' + pm25.toFixed(1) + ')', { sticky: true }));
+    });
+
+    aqiLayer.addTo(map);
+}
+
+// ─── LEGEND ───
+function updateLegend() {
+    var legend = document.getElementById('map-legend');
+    var html = '<div class="map-legend__title">ACTIVE LAYERS</div>';
+
+    var catsPresent = {};
+    filteredReports.forEach(function(r) { if (r.problem_type) catsPresent[r.problem_type] = true; });
+
+    Object.keys(catsPresent).forEach(function(cat) {
+        var color = CATEGORY_COLORS[cat] || '#999';
+        html += '<div class="map-legend__item">' +
+            '<div class="map-legend__dot" style="background:' + color + '"></div>' +
+            '<span class="map-legend__text">' + cat + '</span>' +
+            '</div>';
+    });
+
+    if (layerState.searoutes) {
+        html += '<div class="map-legend__item" style="margin-top:6px"><span class="map-legend__text" style="color:var(--text-3)">— SEA ROUTES —</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#2176FF"></div><span class="map-legend__text">Regional</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#06D6A0"></div><span class="map-legend__text">Island</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#F0A500"></div><span class="map-legend__text">Offshore</span></div>';
+    }
+
+    if (layerState.aqi) {
+        html += '<div class="map-legend__item" style="margin-top:6px"><span class="map-legend__text" style="color:var(--text-3)">— AQI SCALE —</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#06D6A0"></div><span class="map-legend__text">Good (0-50)</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#F0A500"></div><span class="map-legend__text">Moderate (51-100)</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#D62828"></div><span class="map-legend__text">Unhealthy (101+)</span></div>';
+    }
+
+    legend.innerHTML = html;
+}
+
+// ─── BOTTOM BAR FEED ───
+function renderFeed() {
+    var feed = document.getElementById('report-feed');
+    document.getElementById('feed-count').textContent = filteredReports.length + ' items';
+
+    var html = '';
+    filteredReports.forEach(function(r) {
+        var catColor = CATEGORY_COLORS[r.problem_type] || '#999';
+        var statusInfo = STATUS_MAP[r.status] || STATUS_MAP.received;
+        var age = r.status === 'completed' ? 'CLOSED' : Math.round((Date.now() - new Date(r.timestamp)) / 3600000) + 'h';
+        var isUrgent = r.urgency === 'สูง' && r.status !== 'completed';
+        var urgencyColor = isUrgent ? 'var(--red)' : 'transparent';
+        var ageClass = (isUrgent || (age !== 'CLOSED' && parseInt(age) > SLA_HOURS)) ? ' report-card__age--urgent' : '';
+        var selectedClass = (selectedReport && selectedReport.report_id === r.report_id) ? ' selected' : '';
+
+        var thumb = r.image_url ? '<img class="report-card__thumb" src="' + r.image_url + '" onerror="this.style.display=\'none\'" />' : '';
+
+        html += '<div class="report-card' + selectedClass + '" onclick="openDetail(window.allReports.find(function(x){return x.report_id===\'' + r.report_id + '\'}))" data-id="' + r.report_id + '">' +
+            '<div class="report-card__cat-bar" style="background:' + catColor + '"></div>' +
+            '<div class="report-card__urgency-bar" style="background:' + urgencyColor + '"></div>' +
+            thumb +
+            '<div class="report-card__body">' +
+            '<div class="report-card__head">' +
+            '<span class="report-card__ticket">#' + (r.ticket_number || '—') + '</span>' +
+            '<span class="report-card__status" style="background:' + statusInfo.color + ';color:#0A0A0A">' + statusInfo.label + '</span>' +
+            '</div>' +
+            '<div class="report-card__category">' + (r.problem_type || '—') + '</div>' +
+            '<div class="report-card__desc">' + (r.ai_summary || r.description || '—') + '</div>' +
+            '<div class="report-card__footer">' +
+            '<span class="report-card__location">' + (r.location_text || '—') + '</span>' +
+            '<span class="report-card__age' + ageClass + '">' + age + '</span>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+    });
+
+    feed.innerHTML = html;
+}
+
+// ─── DETAIL PANEL ───
+function openDetail(report) {
+    if (!report) return;
+    selectedReport = report;
+
+    var panel = document.getElementById('detail-panel');
+    panel.classList.add('open');
+
+    document.getElementById('detail-ticket').textContent = '#' + (report.ticket_number || '—');
+
+    var catColor = CATEGORY_COLORS[report.problem_type] || '#999';
+    var statusInfo = STATUS_MAP[report.status] || STATUS_MAP.received;
+    var age = report.status === 'completed' ? 'Closed' : Math.round((Date.now() - new Date(report.timestamp)) / 3600000) + ' hours';
+    var ts = new Date(report.timestamp).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' });
+
+    var bodyHtml = '';
+
+    if (report.image_url) {
+        bodyHtml += '<img class="detail-img" src="' + report.image_url + '" onerror="this.style.display=\'none\'" />';
+    }
+
+    bodyHtml += '<div class="detail-section">' +
+        '<div class="detail-label">STATUS</div>' +
+        '<div class="detail-value" style="color:' + statusInfo.color + '">' + statusInfo.label + ' — ' + age + '</div>' +
+        '</div>' +
+        '<div class="detail-section">' +
+        '<div class="detail-label">CATEGORY</div>' +
+        '<div class="detail-value" style="display:flex;align-items:center;gap:6px;">' +
+        '<span style="width:10px;height:10px;background:' + catColor + ';display:inline-block;"></span>' +
+        (report.problem_type || '—') +
+        '</div>' +
+        '</div>' +
+        '<div class="detail-section">' +
+        '<div class="detail-label">URGENCY</div>' +
+        '<div class="detail-value">' + (report.urgency || '—') + '</div>' +
+        '</div>' +
+        '<div class="detail-section">' +
+        '<div class="detail-label">DESCRIPTION</div>' +
+        '<div class="detail-value">' + (report.description || '—') + '</div>' +
+        '</div>' +
+        '<div class="detail-section">' +
+        '<div class="detail-label">AI SUMMARY</div>' +
+        '<div class="detail-value">' + (report.ai_summary || '—') + '</div>' +
+        '</div>';
+
+    if (report.smart_analysis) {
+        bodyHtml += '<div class="detail-section"><div class="detail-label">ANALYSIS</div><div class="detail-value">' + report.smart_analysis + '</div></div>';
+    }
+
+    var phoneMasked = report.phone ? report.phone.replace(/(\d{3})\d{4}(\d{3})/, '$1****$2') : '';
+
+    bodyHtml += '<div class="detail-section">' +
+        '<div class="detail-label">LOCATION</div>' +
+        '<div class="detail-value">' + (report.location_text || '—') + '</div>' +
+        (report.latitude && report.longitude ? '<div class="detail-value detail-value--mono" style="font-size:10px;color:var(--text-3);margin-top:2px;">' + report.latitude.toFixed(5) + ', ' + report.longitude.toFixed(5) + '</div>' : '') +
+        '</div>' +
+        '<div class="detail-section">' +
+        '<div class="detail-label">REPORTER</div>' +
+        '<div class="detail-value">' + (report.nickname || '—') + (phoneMasked ? ' (' + phoneMasked + ')' : '') + '</div>' +
+        '</div>' +
+        '<div class="detail-section">' +
+        '<div class="detail-label">TEAM</div>' +
+        '<div class="detail-value">' + (report.team_name || 'Unassigned') + (report.staff_name ? ' / ' + report.staff_name : '') + '</div>' +
+        '</div>' +
+        '<div class="detail-section">' +
+        '<div class="detail-label">TIMESTAMP</div>' +
+        '<div class="detail-value detail-value--mono">' + ts + '</div>' +
+        '</div>';
+
+    if (report.staff_comment) {
+        bodyHtml += '<div class="detail-section"><div class="detail-label">STAFF COMMENT</div><div class="detail-value">' + report.staff_comment + '</div></div>';
+    }
+
+    document.getElementById('detail-body').innerHTML = bodyHtml;
+
+    // Actions
+    var actionsHtml = '<div style="display:flex;flex-direction:column;gap:4px;">' +
+        '<div class="detail-label">UPDATE STATUS</div>' +
+        '<select class="detail-select" id="detail-status-select">' +
+        '<option value="received"' + (report.status === 'received' ? ' selected' : '') + '>Received</option>' +
+        '<option value="assigned"' + (report.status === 'assigned' ? ' selected' : '') + '>Assigned</option>' +
+        '<option value="in_progress"' + (report.status === 'in_progress' ? ' selected' : '') + '>In Progress</option>' +
+        '<option value="completed"' + (report.status === 'completed' ? ' selected' : '') + '>Completed</option>' +
+        '</select>' +
+        '<input class="filter-input" id="detail-staff-name" placeholder="Staff name" value="' + (report.staff_name || '') + '" style="margin-top:4px;" />' +
+        '<input class="filter-input" id="detail-staff-comment" placeholder="Comment" value="' + (report.staff_comment || '') + '" />' +
+        '</div>' +
+        '<button class="detail-action-btn detail-action-btn--primary" onclick="updateReportStatus()">SAVE CHANGES</button>';
+
+    document.getElementById('detail-actions').innerHTML = actionsHtml;
+
+    // Pan map to location
+    if (report.latitude && report.longitude) {
+        map.flyTo([report.latitude, report.longitude], Math.max(map.getZoom(), 13), { duration: 0.8 });
+    }
+
+    // Highlight card in feed
+    document.querySelectorAll('.report-card').forEach(function(card) {
+        card.classList.toggle('selected', card.dataset.id === report.report_id);
+    });
+}
+
+function closeDetail() {
+    selectedReport = null;
+    document.getElementById('detail-panel').classList.remove('open');
+    document.querySelectorAll('.report-card').forEach(function(card) { card.classList.remove('selected'); });
+}
+
+async function updateReportStatus() {
+    if (!selectedReport) return;
+    var newStatus = document.getElementById('detail-status-select').value;
+    var staffName = document.getElementById('detail-staff-name').value;
+    var staffComment = document.getElementById('detail-staff-comment').value;
+
+    try {
+        var res = await fetch('/api/reports/' + selectedReport.report_id + '/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus, staffName: staffName, staffComment: staffComment })
+        });
+        if (res.ok) {
+            selectedReport.status = newStatus;
+            selectedReport.staff_name = staffName;
+            selectedReport.staff_comment = staffComment;
+            render();
+            openDetail(selectedReport);
+        }
+    } catch (err) {
+        console.error('Update failed:', err);
+    }
+}
+
+// ─── WEATHER ───
+async function fetchWeather() {
+    try {
+        var weatherRes = await fetch('https://api.open-meteo.com/v1/forecast?latitude=7.8804&longitude=98.3923&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m&hourly=precipitation_probability,precipitation,rain,wind_speed_10m,wind_gusts_10m&timezone=Asia%2FBangkok&forecast_days=1');
+        var marineRes = await fetch('https://marine-api.open-meteo.com/v1/marine?latitude=7.8804&longitude=98.3923&current=wave_height,wave_direction,wave_period,sea_surface_temperature&hourly=wave_height&timezone=Asia%2FBangkok&forecast_days=1');
+
+        var weather = await weatherRes.json();
+        var marine = await marineRes.json();
+        var c = weather.current;
+        var mc = marine.current;
+
+        var windDir = c.wind_direction_10m;
+        var compassDirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+        var compass = compassDirs[Math.round(windDir / 22.5) % 16];
+
+        var nowHour = new Date().getHours();
+        var hourlyPrecip = weather.hourly && weather.hourly.precipitation ? weather.hourly.precipitation : [];
+        var next12 = hourlyPrecip.slice(nowHour, nowHour + 12);
+        var totalRain = next12.reduce(function(a, b) { return a + b; }, 0);
+        var hourlyProb = weather.hourly && weather.hourly.precipitation_probability ? weather.hourly.precipitation_probability : [];
+        var probSlice = hourlyProb.slice(nowHour, nowHour + 12);
+        var maxProb = probSlice.length > 0 ? Math.max.apply(null, probSlice) : 0;
+
+        var waveH = mc && mc.wave_height ? mc.wave_height : 0;
+        var windSpeed = c.wind_speed_10m || 0;
+        var marineRisk = 'FAVORABLE';
+        var riskColor = 'var(--green)';
+        if (waveH > 2 || windSpeed > 40) { marineRisk = 'HIGH CAUTION'; riskColor = 'var(--red)'; }
+        else if (waveH > 1 || windSpeed > 25 || totalRain > 10) { marineRisk = 'MODERATE'; riskColor = 'var(--yellow)'; }
+
+        document.getElementById('weather-content').innerHTML =
+            '<div class="weather-row"><span class="weather-label">Temp</span><span class="weather-val">' + c.temperature_2m + '°C</span></div>' +
+            '<div class="weather-row"><span class="weather-label">Humidity</span><span class="weather-val">' + c.relative_humidity_2m + '%</span></div>' +
+            '<div class="weather-row"><span class="weather-label">Wind</span><span class="weather-val">' + windSpeed + ' km/h ' + compass + '</span></div>' +
+            '<div class="weather-row"><span class="weather-label">Gusts</span><span class="weather-val">' + c.wind_gusts_10m + ' km/h</span></div>' +
+            '<div class="weather-row"><span class="weather-label">Wave</span><span class="weather-val">' + waveH + 'm / ' + (mc && mc.wave_period ? mc.wave_period : '—') + 's</span></div>' +
+            '<div class="weather-row"><span class="weather-label">Sea Temp</span><span class="weather-val">' + (mc && mc.sea_surface_temperature ? mc.sea_surface_temperature : '—') + '°C</span></div>' +
+            '<div class="weather-row"><span class="weather-label">Rain 12h</span><span class="weather-val">' + totalRain.toFixed(1) + 'mm (' + maxProb + '%)</span></div>' +
+            '<div style="margin-top:6px;padding:4px 6px;border:1px solid ' + riskColor + ';display:inline-block;">' +
+            '<span style="font-size:7px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:' + riskColor + '">MARINE: ' + marineRisk + '</span>' +
+            '</div>';
+    } catch(e) {
+        document.getElementById('weather-content').textContent = 'Weather data unavailable';
+    }
+}
+
+// ─── BRIEFING ───
+document.getElementById('btn-briefing').addEventListener('click', async function() {
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'ANALYZING...';
+
+    var active = allReports.filter(function(r) { return r.status !== 'completed'; });
+    var urgent = active.filter(function(r) { return r.urgency === 'สูง'; });
+    var categories = {};
+    active.forEach(function(r) {
+        var cat = r.problem_type || 'Other';
+        categories[cat] = (categories[cat] || 0) + 1;
+    });
+    var topCats = Object.entries(categories).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 3);
+
+    var slaRisk = active.filter(function(r) { return (Date.now() - new Date(r.timestamp)) / 3600000 > SLA_HOURS; });
+    var avgAge = active.length > 0 ? Math.round(active.reduce(function(sum, r) { return sum + (Date.now() - new Date(r.timestamp)) / 3600000; }, 0) / active.length) : 0;
+
+    var brief = '<strong>OPERATIONAL BRIEFING</strong><br><br>';
+    brief += 'Active cases: <strong>' + active.length + '</strong> | Urgent: <strong style="color:var(--red)">' + urgent.length + '</strong><br>';
+    brief += 'SLA at risk (>' + SLA_HOURS + 'h): <strong>' + slaRisk.length + '</strong> | Avg age: <strong>' + avgAge + 'h</strong><br><br>';
+    brief += '<strong>Top categories:</strong><br>';
+    topCats.forEach(function(item) {
+        brief += '&#9642; ' + item[0] + ': ' + item[1] + '<br>';
+    });
+
+    if (urgent.length > 0) {
+        brief += '<br><strong style="color:var(--red)">URGENT ITEMS:</strong><br>';
+        urgent.slice(0, 5).forEach(function(r) {
+            brief += '&#9642; #' + r.ticket_number + ': ' + (r.ai_summary || r.description || '—').substring(0, 60) + '<br>';
+        });
+    }
+
+    document.getElementById('briefing-content').innerHTML = brief;
+    btn.textContent = 'RUN ANALYSIS';
+    btn.disabled = false;
+});
+
+// ─── EVENT LISTENERS ───
+
+// Filters
+['filter-search', 'filter-category', 'filter-status', 'filter-urgency', 'filter-team'].forEach(function(id) {
+    document.getElementById(id).addEventListener(id === 'filter-search' ? 'input' : 'change', render);
+});
+
+// Quick filters
+document.querySelectorAll('.chip').forEach(function(el) {
+    el.addEventListener('click', function() {
+        var key = el.dataset.quick;
+        quickFilters[key] = !quickFilters[key];
+        el.classList.toggle('active', quickFilters[key]);
+        render();
+    });
+});
+
+// Map mode
+document.querySelectorAll('.mode-btn').forEach(function(el) {
+    el.addEventListener('click', function() {
+        document.querySelectorAll('.mode-btn').forEach(function(b) { b.classList.remove('active'); });
+        el.classList.add('active');
+        mapMode = el.dataset.mode;
+        render();
+    });
+});
+
+// Sort
+document.querySelectorAll('.sort-btn').forEach(function(el) {
+    el.addEventListener('click', function() {
+        document.querySelectorAll('.sort-btn').forEach(function(b) { b.classList.remove('active'); });
+        el.classList.add('active');
+        sortMode = el.dataset.sort;
+        render();
+    });
+});
+
+// ─── INIT ───
+window.openDetail = openDetail;
+window.closeDetail = closeDetail;
+window.updateReportStatus = updateReportStatus;
+window.allReports = allReports;
+
+function init() {
+    initMap();
+    fetchData();
+    fetchWeather();
+    fetchMarinePorts();
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>

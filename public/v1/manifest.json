@@ -2,7 +2,7 @@
     "name": "SCTH Field Ops",
     "short_name": "SCTH Ops",
     "description": "Smart City Thailand Field Operations Tool",
-    "start_url": "/staff.html",
+    "start_url": "/v1/staff.html",
     "display": "standalone",
     "background_color": "#000000",
     "theme_color": "#000000",

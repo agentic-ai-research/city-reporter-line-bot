@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/v1/manifest.json">
+    <title>SCTH | Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --safe-area-top: env(safe-area-inset-top);
+            --safe-area-bottom: env(safe-area-inset-bottom);
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: #000000;
+            color: #ffffff;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        .safe-top {
+            padding-top: var(--safe-area-top);
+        }
+
+        .safe-bottom {
+            padding-bottom: var(--safe-area-bottom);
+        }
+
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-panel {
+            background: linear-gradient(145deg, #121212, #080808);
+            border: 1px solid #1f1f1f;
+        }
+
+        /* Robust Touch UI */
+        .btn-action {
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 16px;
+            border-radius: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-action:active {
+            transform: scale(0.96);
+            filter: brightness(1.2);
+        }
+
+        .card-task {
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease;
+        }
+
+        .card-task:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .card-task.urgent {
+            border-color: #ef4444;
+            background: linear-gradient(145deg, #1a0808, #080000);
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .shimmer {
+            background: linear-gradient(90deg, #111 25%, #222 50%, #111 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="flex h-screen overflow-hidden bg-black text-white">
+
+    <!-- SIDEBAR (Desktop Only) -->
+    <aside class="w-80 border-r border-white/5 bg-zinc-950 flex-col hidden lg:flex z-20 shadow-2xl">
+        <div class="p-6 border-b border-white/5">
+            <h1 class="text-2xl font-black italic tracking-tighter text-blue-500">SMART CITY <span
+                    class="text-white">OPS</span></h1>
+            <p class="text-xs text-gray-500 uppercase tracking-widest mt-1">Command Center V2.0</p>
+        </div>
+
+        <!-- Live Stats -->
+        <div class="p-6 space-y-4 border-b border-white/5">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-zinc-900 p-4 rounded-xl border border-white/5">
+                    <p class="text-[10px] text-gray-500 uppercase font-bold">Pending</p>
+                    <p id="stat-pending" class="text-2xl font-black text-yellow-500">-</p>
+                </div>
+                <div class="bg-zinc-900 p-4 rounded-xl border border-white/5">
+                    <p class="text-[10px] text-gray-500 uppercase font-bold">Solved</p>
+                    <p id="stat-completed" class="text-2xl font-black text-green-500">-</p>
+                </div>
+            </div>
+            <div class="bg-zinc-900 p-4 rounded-xl border border-white/5 relative overflow-hidden">
+                <div class="relative z-10">
+                    <p class="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-2">
+                        <i data-lucide="clock" class="w-3 h-3"></i> Avg Handle Time
+                    </p>
+                    <p id="stat-handle-time" class="text-3xl font-black text-blue-400 mt-1">- min</p>
+                    <p class="text-[9px] text-gray-600 mt-1">Target: < 60 min</p>
+                </div>
+                <div class="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-blue-900/20 to-transparent">
+                </div>
+            </div>
+        </div>
+
+        <!-- Smart News Feed -->
+        <div class="flex-grow overflow-y-auto p-6">
+            <p class="text-[10px] font-bold text-gray-500 uppercase mb-4 sticky top-0 bg-zinc-950 py-2">Smart City Feed
+            </p>
+            <div id="news-feed" class="space-y-4">
+                <!-- News items injected here -->
+                <div class="shimmer h-16 rounded-xl opacity-20"></div>
+                <div class="shimmer h-16 rounded-xl opacity-20"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-white/5 text-[10px] text-gray-600 text-center">
+            SYSTEM ONLINE • SECURE CONNECTION
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-grow flex flex-col h-full relative">
+
+        <!-- Header (Mobile + Desktop) -->
+        <header
+            class="flex justify-between items-center px-6 py-4 bg-black/80 backdrop-blur-md border-b border-white/5 z-30">
+            <div class="lg:hidden">
+                <h1 class="text-xl font-black italic tracking-tighter text-white">OPS CONTROL</h1>
+                <div class="flex items-center gap-2">
+                    <span id="team-name-display"
+                        class="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Initializing...</span>
+                    <span id="sync-indicator" class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                </div>
+            </div>
+
+            <!-- Desktop Header Title (Hidden on Mobile) -->
+            <div class="hidden lg:block">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i data-lucide="map-pin" class="w-4 h-4 text-blue-500"></i> Bangkok Operations
+                </h2>
+            </div>
+
+            <!-- Weather Widget (Permanent) -->
+            <div class="flex items-center gap-4">
+                <div id="weather-widget"
+                    class="flex items-center gap-3 bg-zinc-900/80 px-4 py-2 rounded-full border border-white/10">
+                    <i data-lucide="cloud" class="w-4 h-4 text-gray-400"></i>
+                    <span class="text-xs font-bold text-gray-300">Checking...</span>
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="toggleFloodMode()" id="flood-btn"
+                        class="w-10 h-10 bg-blue-900/20 rounded-xl flex items-center justify-center border border-blue-500/20 active:bg-blue-600/50 transition-colors">
+                        <i data-lucide="droplets" class="w-5 h-5 text-blue-400"></i>
+                    </button>
+                    <button onclick="toggleTeamMenu()"
+                        class="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/5 active:bg-white/20 transition-colors">
+                        <i data-lucide="settings-2" class="w-5 h-5 text-white"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dynamic Warning Bar -->
+        <div id="weather-alert"
+            class="bg-red-600 text-white text-[10px] font-black uppercase text-center py-2 hidden tracking-wide animate-pulse">
+            ⚠️ WARNING: Heavy Rain Detected - Flood Protocol Active
+        </div>
+
+        <!-- Task Feed -->
+        <div id="task-feed"
+            class="flex-grow overflow-y-auto p-4 lg:p-8 space-y-4 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 no-scrollbar pb-32">
+            <!-- Tasks injected here -->
+            <div class="card-task shimmer h-32 opacity-50"></div>
+            <div class="card-task shimmer h-32 opacity-30"></div>
+        </div>
+
+        <!-- Mobile Bottom Floating Status (Visible only if tasks are hidden) -->
+        <div id="empty-state"
+            class="hidden absolute inset-0 flex flex-col items-center justify-center opacity-30 pointer-events-none">
+            <i data-lucide="shield-check" class="w-24 h-24 mb-6"></i>
+            <p class="text-2xl font-black">ALL SYSTEMS GREEN</p>
+        </div>
+
+    </main>
+
+    <!-- Detail Sheet (Overlay) -->
+    <div id="detail-sheet"
+        class="fixed inset-0 z-[100] bg-black translate-y-full transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col lg:w-[500px] lg:right-0 lg:left-auto lg:border-l lg:border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+
+        <!-- Sheet Header -->
+        <div class="p-6 pb-2 flex justify-between items-center border-b border-white/5 bg-black/90 backdrop-blur-xl">
+            <button onclick="closeDetail()"
+                class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center hover:bg-white/10">
+                <i data-lucide="chevron-down" class="w-6 h-6 lg:hidden"></i>
+                <i data-lucide="x" class="w-6 h-6 hidden lg:block"></i>
+            </button>
+            <div class="text-center">
+                <p id="detail-id" class="text-[10px] font-bold text-gray-500 uppercase tracking-widest font-mono">
+                    TICKET-0000</p>
+                <div id="detail-status"
+                    class="text-[10px] font-black text-white px-2 py-0.5 rounded bg-blue-600 inline-block uppercase mt-1">
+                    STATUS</div>
+            </div>
+            <div class="w-12"></div> <!-- Spacer -->
+        </div>
+
+        <!-- Sheet Content -->
+        <div class="flex-grow overflow-y-auto px-6 py-6 no-scrollbar pb-40">
+            <!-- Map Preview -->
+            <div class="relative h-56 bg-zinc-900 rounded-3xl mb-6 overflow-hidden border border-white/10 group">
+                <img id="map-preview"
+                    class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                <button onclick="launchNav()"
+                    class="absolute bottom-4 right-4 px-4 py-2 bg-blue-600 rounded-xl text-white font-black flex items-center gap-2 shadow-lg active:scale-95 text-xs tracking-wider">
+                    <i data-lucide="navigation" class="w-4 h-4"></i> NAVIGATE
+                </button>
+            </div>
+
+            <!-- Problem Info -->
+            <div class="space-y-6">
+                <div>
+                    <h2 id="detail-title" class="text-3xl font-black mb-3 leading-tight text-white">Problem Title</h2>
+                    <div id="detail-desc"
+                        class="text-gray-400 text-sm leading-relaxed p-4 bg-zinc-900/50 rounded-2xl border border-white/5">
+                        Description...
+                    </div>
+                </div>
+
+                <!-- Deep Analysis Block -->
+                <div id="ai-block" class="bg-blue-900/10 p-4 rounded-2xl border border-blue-500/20">
+                    <p class="text-[10px] font-bold text-blue-400 uppercase mb-2 flex items-center gap-2">
+                        <i data-lucide="bot" class="w-3 h-3"></i> AI Analysis
+                    </p>
+                    <p id="detail-analysis" class="text-xs text-blue-200">Analyzing...</p>
+                </div>
+
+                <!-- Contact Grid -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-zinc-900/50 p-4 rounded-2xl border border-white/5">
+                        <p class="text-[10px] font-bold text-gray-500 uppercase mb-1">Reporter</p>
+                        <p id="detail-reporter" class="font-bold text-sm truncate">Name</p>
+                    </div>
+                    <a id="detail-call-btn" href="#"
+                        class="bg-zinc-900/50 p-4 rounded-2xl border border-white/5 active:bg-blue-900/20 transition-colors block">
+                        <p class="text-[10px] font-bold text-gray-500 uppercase mb-1 flex items-center justify-between">
+                            Contact <i data-lucide="phone" class="w-3 h-3"></i>
+                        </p>
+                        <p id="detail-phone" class="font-bold text-sm text-blue-400 truncate">08xxxxxxxx</p>
+                    </a>
+                </div>
+
+                <!-- Evidence -->
+                <div>
+                    <p class="text-[10px] font-bold text-gray-500 uppercase mb-3 pl-1">Site Evidence</p>
+                    <img id="detail-img"
+                        class="w-full rounded-2xl border border-white/10 shadow-lg min-h-[250px] object-cover bg-zinc-900">
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Action Bar (Fixed Bottom) -->
+        <div id="action-bar"
+            class="absolute bottom-0 left-0 right-0 p-6 bg-black/80 backdrop-blur-xl border-t border-white/10 z-20">
+            <!-- Buttons injected here -->
+        </div>
+    </div>
+
+    <!-- Team Modal -->
+    <div id="team-modal"
+        class="fixed inset-0 z-[200] bg-black/95 backdrop-blur-md flex flex-col justify-center p-8 hidden animate-in fade-in duration-200">
+        <h2 class="text-3xl font-black text-center mb-2">SELECT UNIT</h2>
+        <div class="grid grid-cols-1 gap-3 max-w-md mx-auto w-full">
+            <button onclick="setTeam('ทีมโยธา (ถนน/อาคาร)', '🏢')"
+                class="btn-action bg-zinc-800 text-white border border-white/10">🏗️ Civil Works</button>
+            <button onclick="setTeam('ทีมสิ่งแวดล้อม (ขยะ/ความสะอาด)', '🧹')"
+                class="btn-action bg-zinc-800 text-white border border-white/10">🧹 Environment</button>
+            <button onclick="setTeam('ทีมไฟฟ้า (ส่องสว่าง/สายไฟ)', '⚡')"
+                class="btn-action bg-zinc-800 text-white border border-white/10">⚡ Electrical</button>
+            <button onclick="setTeam('ทีมบรรเทาสาธารณภัย (สัตว์/ภัยพิบัติ)', '🚒')"
+                class="btn-action bg-zinc-800 text-white border border-white/10">🚒 Rescue</button>
+        </div>
+        <button onclick="toggleTeamMenu()"
+            class="mt-8 text-gray-500 font-bold uppercase text-xs text-center">Cancel</button>
+    </div>
+
+    <input type="file" id="camera" accept="image/*" capture="environment" class="hidden"
+        onchange="submitResolution(this)">
+
+    <script>
+        lucide.createIcons();
+        let reports = [];
+        let activeTask = null;
+        let selectedTeam = localStorage.getItem('field-team') || '';
+        let staffLocation = null;
+        let floodMode = false;
+
+        // Start
+        if (!selectedTeam) document.getElementById('team-modal').classList.remove('hidden');
+        else refreshUI();
+
+        fetchData();
+        setInterval(fetchData, 5000); // 5s refresh
+        fetchStats();
+        setInterval(fetchStats, 60000); // 1m stats refresh
+
+        // Helper: Location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                staffLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                // Fetch local weather immediately
+                updateWeather(staffLocation.lat, staffLocation.lng);
+            });
+        }
+
+        async function fetchData() {
+            document.getElementById('sync-indicator').classList.add('animate-pulse');
+            try {
+                const res = await fetch('/api/v1/reports');
+                reports = await res.json();
+                renderFeed();
+                document.getElementById('sync-indicator').classList.remove('animate-pulse');
+            } catch (e) { console.error(e); }
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/v1/stats');
+                const data = await res.json();
+                
+                // Update Desktop Sidebar
+                document.getElementById('stat-pending').innerText = data.pendingCount || 0;
+                document.getElementById('stat-completed').innerText = data.completedCount || 0;
+                document.getElementById('stat-handle-time').innerText = (data.avgHandleTimeMinutes || 0) + ' min';
+
+                // Render News
+                if (data.news && data.news.length > 0) {
+                    const newsHtml = data.news.map(n => `
+                        <div class="bg-zinc-900/50 p-4 rounded-xl border border-white/5 hover:bg-zinc-900 transition-colors cursor-pointer group">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="bg-blue-900/30 text-blue-400 p-1.5 rounded-lg">
+                                    <i data-lucide="${n.icon || 'globe'}" class="w-4 h-4"></i>
+                                </div>
+                                <span class="text-[9px] text-gray-500 font-bold uppercase">${n.time}</span>
+                            </div>
+                            <h4 class="font-bold text-sm leading-tight text-white group-hover:text-blue-400 transition-colors">${n.title}</h4>
+                            <p class="text-[10px] text-gray-500 mt-1 line-clamp-2">${n.summary}</p>
+                        </div>
+                    `).join('');
+                    document.getElementById('news-feed').innerHTML = newsHtml;
+                    lucide.createIcons();
+                }
+
+            } catch(e) { console.error('Stats error:', e); }
+        }
+
+        async function updateWeather(lat, lng) {
+            try {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,precipitation,weather_code`);
+                const data = await res.json();
+                const temp = Math.round(data.current.temperature_2m);
+                const rain = data.current.precipitation;
+                const isRaining = rain > 0;
+
+                const widget = document.getElementById('weather-widget');
+                widget.innerHTML = `
+                    <i data-lucide="${isRaining ? 'cloud-rain' : 'sun'}" class="w-4 h-4 ${isRaining ? 'text-blue-400' : 'text-yellow-400'}"></i>
+                    <span class="text-xs font-bold text-white">${temp}°C</span>
+                `;
+                lucide.createIcons();
+
+                // Alert Bar
+                const alertBar = document.getElementById('weather-alert');
+                if (isRaining) {
+                    alertBar.classList.remove('hidden');
+                    alertBar.innerText = `⚠️ RAIN DETECTED (${rain}mm) - SLIPPERY ROAD CAUTION`;
+                } else {
+                    alertBar.classList.add('hidden');
+                }
+
+            } catch (e) {
+                console.error(e);
+                document.getElementById('weather-widget').innerHTML = `<span class="text-xs text-red-500">Offline</span>`;
+            }
+        }
+
+        function toggleTeamMenu() {
+            document.getElementById('team-modal').classList.toggle('hidden');
+        }
+
+        function setTeam(name, icon) {
+            selectedTeam = name;
+            localStorage.setItem('field-team', name);
+            refreshUI();
+            toggleTeamMenu();
+            renderFeed();
+        }
+
+        function refreshUI() {
+            document.getElementById('team-name-display').innerText = selectedTeam;
+        }
+
+        function renderFeed() {
+            const feed = document.getElementById('task-feed');
+            
+            const myJobs = reports.filter(r => 
+                (r.team_name === selectedTeam && r.status !== 'completed') || 
+                (r.status === 'received' && !r.team_name)
+            ).sort((a, b) => {
+                // Urgent first, then new
+                if (a.urgency === 'สูง' && b.urgency !== 'สูง') return -1;
+                if (b.urgency === 'สูง' && a.urgency !== 'สูง') return 1;
+                return new Date(b.timestamp) - new Date(a.timestamp);
+            });
+
+            if (myJobs.length === 0) {
+                document.getElementById('empty-state').classList.remove('hidden');
+                feed.innerHTML = '';
+                return;
+            }
+            document.getElementById('empty-state').classList.add('hidden');
+
+            feed.innerHTML = myJobs.map(r => {
+                // Determine icon
+                let icon = 'alert-circle';
+                if (r.problem_type.includes('ไฟ')) icon = 'zap';
+                if (r.problem_type.includes('น้ำ')) icon = 'droplets';
+                if (r.problem_type.includes('ขยะ')) icon = 'trash-2';
+
+                return `
+                <div onclick="openDetail('${r.report_id}')" class="card-task bg-zinc-900 border border-white/5 cursor-pointer hover:bg-zinc-800 ${r.urgency === 'สูง' ? 'urgent border-red-500/50' : ''}">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="bg-white/5 px-2 py-1 rounded-md text-[9px] font-black uppercase text-gray-400 font-mono tracking-wider">
+                            ${r.ticket_number}
+                        </div>
+                        <div class="flex items-center gap-1.5 ${getStatusColor(r.status)} font-black text-[10px] uppercase">
+                            <span class="w-1.5 h-1.5 rounded-full bg-current ${r.status === 'in_progress' ? 'animate-pulse' : ''}"></span>
+                            ${r.status.replace('_', ' ')}
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="bg-black/40 p-3 rounded-2xl text-gray-400 border border-white/5">
+                            <i data-lucide="${icon}" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold leading-tight mb-1 line-clamp-2">${r.problem_type}</h3>
+                            <p class="text-[11px] text-gray-500 font-medium flex items-center gap-2">
+                                <i data-lucide="clock" class="w-3 h-3"></i> ${new Date(r.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function getStatusColor(status) {
+            if (status === 'received') return 'text-yellow-500';
+            if (status === 'in_progress') return 'text-blue-500';
+            if (status === 'completed') return 'text-green-500';
+            return 'text-gray-500';
+        }
+
+        function toggleFloodMode() {
+            floodMode = !floodMode;
+            document.getElementById('flood-btn').classList.toggle('bg-blue-600');
+            document.getElementById('flood-btn').classList.toggle('text-white');
+            if(activeTask) openDetail(activeTask.report_id);
+        }
+
+        function openDetail(id) {
+            activeTask = reports.find(r => r.report_id === id);
+            if (!activeTask) return;
+
+            // Populate Content
+            document.getElementById('detail-id').innerText = activeTask.ticket_number;
+            document.getElementById('detail-status').innerText = activeTask.status.replace('_', ' ');
+            document.getElementById('detail-title').innerText = activeTask.problem_type;
+            document.getElementById('detail-desc').innerText = activeTask.description || 'No description.';
+            document.getElementById('detail-analysis').innerText = activeTask.smart_analysis || activeTask.ai_summary || "Waiting for Operations AI...";
+            document.getElementById('detail-reporter').innerText = activeTask.nickname || 'Citizen';
+            document.getElementById('detail-phone').innerText = activeTask.phone || 'Unknown';
+            document.getElementById('detail-call-btn').href = activeTask.phone ? `tel:${activeTask.phone}` : '#';
+            
+            // Image
+            const imgEl = document.getElementById('detail-img');
+            imgEl.src = getDriveLink(activeTask.image_url);
+            
+            // Map
+            const lat = activeTask.latitude || 13.75;
+            const lng = activeTask.longitude || 100.50;
+            // Start with a placeholder or loader
+            const mapEl = document.getElementById('map-preview');
+            // Use Google Maps Embed (iframe) for reliability without API Key (place mode)
+            // Or use the simple output=embed
+            // Cleaning up the previous img tag to be an iframe if needed, or just set src on iframe.
+            // But wait, the HTML has an <img> tag. We need to dynamic swap or change HTML 
+            // Swapping to iframe logic in JS:
+            const parent = mapEl.parentElement;
+            if (mapEl.tagName === 'IMG') {
+               const iframe = document.createElement('iframe');
+               iframe.id = 'map-preview';
+               iframe.className = 'w-full h-full object-cover transition-transform duration-700 group-hover:scale-105'; // reduced scale to prevent crop
+               iframe.style.border = '0';
+               iframe.allowFullscreen = true;
+               parent.insertBefore(iframe, mapEl);
+               parent.removeChild(mapEl);
+            }
+            
+            const mapFrame = document.getElementById('map-preview');
+            const layer = floodMode ? 'satellite' : 'roadmap';
+            // Note: output=embed is reliable and free
+            mapFrame.src = `https://maps.google.com/maps?q=${lat},${lng}&t=${floodMode ? 'k' : 'm'}&z=15&ie=UTF8&iwloc=&output=embed`;
+            
+            renderActions();
+            document.getElementById('detail-sheet').classList.remove('translate-y-full');
+        }
+
+        function closeDetail() {
+            document.getElementById('detail-sheet').classList.add('translate-y-full');
+            activeTask = null;
+        }
+
+        function renderActions() {
+            const bar = document.getElementById('action-bar');
+            const status = activeTask.status;
+
+            let html = '';
+            if (status === 'received') {
+                html = `<button onclick="updateJobStatus('assigned')" class="btn-action w-full bg-white text-black hover:bg-gray-200">ACKNOWLEDGE JOB</button>`;
+            } else if (status === 'assigned') {
+                html = `<button onclick="updateJobStatus('in_progress')" class="btn-action w-full bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/50">START REPAIR</button>`;
+            } else if (status === 'in_progress') {
+                html = `
+                    <div class="grid grid-cols-2 gap-4">
+                         <button onclick="launchNav()" class="btn-action bg-zinc-800 text-white">MAPS</button>
+                         <button onclick="document.getElementById('camera').click()" class="btn-action bg-green-600 text-white shadow-lg shadow-green-900/50">FINISH</button>
+                    </div>`;
+            } else {
+                html = `<div class="text-center text-gray-500 font-bold uppercase text-xs py-4">Job Completed</div>`;
+            }
+            bar.innerHTML = html;
+        }
+
+        function launchNav() {
+            if (activeTask) window.open(`http://maps.google.com/maps?daddr=${activeTask.latitude},${activeTask.longitude}`, '_blank');
+        }
+
+        function getDriveLink(url) {
+            if (!url) return 'https://placehold.co/600x400/101010/333?text=No+Image';
+            const idMatch = url.match(/id=([^&]+)/) || url.match(/file\/d\/([^\/]+)/);
+            if (idMatch) return `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w1000`;
+            return url;
+        }
+
+        async function updateJobStatus(newStatus, solutionUrl = null) {
+            const body = {
+                status: newStatus,
+                teamName: selectedTeam,
+                staffName: 'Ops ' + selectedTeam.split(' ')[0],
+                staffComment: 'Mobile Update',
+                solutionImageUrl: solutionUrl
+            };
+            try {
+                await fetch(`/api/v1/reports/${activeTask.report_id}/status`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(body)
+                });
+                closeDetail();
+                fetchData();
+                fetchStats(); // Update stats immediately
+            } catch (e) { alert('Error updating status'); }
+        }
+
+        async function submitResolution(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('image', file);
+            document.getElementById('action-bar').innerHTML = `<div class="btn-action w-full bg-zinc-800 text-gray-400 animate-pulse">UPLOADING...</div>`;
+            
+            try {
+                const res = await fetch('/api/v1/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                await updateJobStatus('completed', data.url);
+            } catch (e) { 
+                alert('Upload Failed'); 
+                renderActions();
+            }
+        }
+    </script>
+</body>
+
+</html>

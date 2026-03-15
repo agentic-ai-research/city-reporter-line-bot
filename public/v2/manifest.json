@@ -1,0 +1,17 @@
+{
+    "name": "SCTH Field Ops",
+    "short_name": "SCTH Ops",
+    "description": "Smart City Thailand Field Operations Tool",
+    "start_url": "/v2/staff.html",
+    "display": "standalone",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "icons": [
+        {
+            "src": "https://cdn-icons-png.flaticon.com/512/2942/2942503.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
