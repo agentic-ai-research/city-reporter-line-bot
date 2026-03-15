@@ -89,12 +89,11 @@ const upload = multer({ storage });
 // ROUTES
 // ============================================
 
-// Dashboard
+// Dashboard — V2 is the primary dashboard on this instance
 app.get('/', (req, res) => {
-    res.redirect('/v1/dashboard.html');
+    res.redirect('/v2/dashboard.html');
 });
 
-app.get('/v1', (req, res) => res.redirect('/v1/dashboard.html'));
 app.get('/v2', (req, res) => res.redirect('/v2/dashboard.html'));
 
 // Health Check
