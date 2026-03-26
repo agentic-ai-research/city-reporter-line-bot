@@ -169,8 +169,41 @@ CREATE TABLE IF NOT EXISTS bot_outbox (
 CREATE INDEX IF NOT EXISTS idx_bot_outbox_status_available ON bot_outbox(status, available_at, created_at);
 
 -- ============================================
+-- ROW LEVEL SECURITY
+-- All access is server-side via service_role key
+-- (which bypasses RLS). Enable RLS on every table
+-- so the public anon/PostgREST API cannot read or
+-- write data.
+-- ============================================
+
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversation_states ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversation_memory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_facts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_meta ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bot_inbox ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bot_outbox ENABLE ROW LEVEL SECURITY;
+
+-- No policies are created for the anon role, meaning
+-- unauthenticated requests via the public REST API
+-- will be denied on all operations (SELECT/INSERT/UPDATE/DELETE).
+--
+-- The service_role key used by the backend bypasses RLS entirely,
+-- so the application continues to work as before.
+
+-- ============================================
+-- FUNCTION SECURITY
+-- Revoke public access to internal functions so
+-- the anon/public REST API cannot call them.
+-- ============================================
+
+REVOKE EXECUTE ON FUNCTION allocate_ticket_number() FROM public;
+REVOKE EXECUTE ON FUNCTION allocate_ticket_number() FROM anon;
+
+-- ============================================
 -- STORAGE: Create bucket for report images
 -- (Run this in Supabase Dashboard > Storage > Create bucket)
 -- Bucket name: report-images
--- Public: Yes
+-- Public: Yes (images are referenced in LINE messages)
 -- ============================================
