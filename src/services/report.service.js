@@ -312,7 +312,7 @@ class ReportService {
         // ── Build Response ──
         let magicEyeLine = '🔍 ';
         if (!imageUrl) {
-            magicEyeLine += '⚠️ อัพโหลดรูปไม่สำเร็จ กรุณาส่งรูปอีกครั้งครับ\n';
+            magicEyeLine += '⚠️ อัพโหลดรูปไม่สำเร็จ แต่ AI วิเคราะห์เรียบร้อยแล้วครับ\n';
         }
         if (analysis.problemType) magicEyeLine += `ปัญหา: **${analysis.problemType}**`;
         if (analysis.summary) magicEyeLine += `\n${analysis.summary}`;
@@ -440,21 +440,23 @@ class ReportService {
             log.error('Google Drive upload failed', e.message);
         }
 
-        // Upload to Supabase Storage (backup, fire-and-forget)
-        uploadImageToSupabase(imageBuffer, `reports/${filename}`)
-            .then(url => { if (url) log.info(`Supabase image backup: ${url}`); })
-            .catch(() => {});
+        // Upload to Supabase Storage (fallback if Drive fails, otherwise backup)
+        try {
+            supabaseUrl = await uploadImageToSupabase(imageBuffer, `reports/${filename}`);
+            if (supabaseUrl) log.info(`Supabase image: ${supabaseUrl}`);
+        } catch (e) {
+            log.warn('Supabase image upload failed', e.message);
+        }
 
-        // Use whichever succeeded
-        const finalUrl = driveUrl;
+        // Use whichever succeeded (Drive preferred, Supabase as fallback)
+        const finalUrl = driveUrl || supabaseUrl;
         if (finalUrl) {
             conversationManager.updateState(userId, { imageUrl: finalUrl });
             log.info(`Image uploaded: ${finalUrl}`);
             return finalUrl;
         }
 
-        log.error('All image uploads failed — resetting imageUrl from processing state');
-        // CRITICAL FIX: Reset imageUrl so checklist shows failure, not stuck "processing"
+        log.error('All image uploads failed — keeping imageCount so checklist shows received');
         conversationManager.updateState(userId, { imageUrl: null });
         return null;
     }
