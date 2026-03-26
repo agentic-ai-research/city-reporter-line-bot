@@ -376,6 +376,39 @@ body {
     gap: 4px;
 }
 
+/* Watch presets */
+.preset-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+}
+
+.preset-btn {
+    padding: 7px 6px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-3);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+.preset-btn.active {
+    background: var(--yellow);
+    border-color: var(--yellow);
+    color: var(--black);
+}
+
+.preset-btn:hover:not(.active) {
+    color: var(--text-1);
+    border-color: var(--border-strong);
+}
+
 /* Weather block */
 .weather-row {
     display: flex;
@@ -394,6 +427,73 @@ body {
     font-size: 10px;
     font-weight: 700;
     color: var(--text-2);
+}
+
+/* Source status */
+.source-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.source-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.source-row__meta {
+    min-width: 0;
+    flex: 1;
+}
+
+.source-row__name {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+.source-row__detail {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: var(--text-3);
+    margin-top: 2px;
+    line-height: 1.4;
+}
+
+.source-pill {
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    font-family: 'Space Mono', monospace;
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    white-space: nowrap;
+}
+
+.source-pill--live {
+    border-color: var(--green);
+    color: var(--green);
+}
+
+.source-pill--warn {
+    border-color: var(--yellow);
+    color: var(--yellow);
+}
+
+.source-pill--alert {
+    border-color: var(--red);
+    color: var(--red);
+}
+
+.source-pill--idle {
+    border-color: var(--border);
+    color: var(--text-3);
 }
 
 /* Briefing box */
@@ -475,6 +575,108 @@ body {
     text-transform: uppercase;
     color: var(--text-3);
     margin-top: 2px;
+}
+
+.watch-hud {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 600;
+    width: min(360px, calc(100% - 24px));
+    background: rgba(10, 10, 10, 0.9);
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    backdrop-filter: blur(10px);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.watch-hud__kicker {
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+.watch-hud__headline {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.watch-hud__title {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-1);
+}
+
+.watch-hud__alert {
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.watch-hud__alert--live {
+    border-color: var(--green);
+    color: var(--green);
+}
+
+.watch-hud__alert--warn {
+    border-color: var(--yellow);
+    color: var(--yellow);
+}
+
+.watch-hud__alert--alert {
+    border-color: var(--red);
+    color: var(--red);
+}
+
+.watch-hud__alert--idle {
+    border-color: var(--border);
+    color: var(--text-3);
+}
+
+.watch-hud__layers {
+    font-size: 9px;
+    color: var(--text-2);
+    line-height: 1.5;
+}
+
+.watch-hud__meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.watch-hud__meta-item {
+    padding: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    min-height: 46px;
+}
+
+.watch-hud__meta-label {
+    font-size: 6.5px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+.watch-hud__meta-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: var(--text-2);
+    line-height: 1.45;
+    margin-top: 3px;
 }
 
 /* Map legend */
@@ -569,6 +771,156 @@ body {
     font-size: 10px;
     font-weight: 700;
     color: var(--text-2);
+}
+
+.bottom-bar__summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 240px;
+    gap: 10px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    min-height: 72px;
+}
+
+.signal-wire {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.signal-wire__header,
+.signal-chart__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.signal-wire__label,
+.signal-chart__title {
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+.signal-wire__source,
+.signal-chart__total {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: var(--text-3);
+    white-space: nowrap;
+}
+
+.signal-wire__items {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
+    scroll-behavior: smooth;
+}
+
+.signal-wire__items::-webkit-scrollbar { height: 3px; }
+.signal-wire__items::-webkit-scrollbar-track { background: var(--black); }
+.signal-wire__items::-webkit-scrollbar-thumb { background: var(--border); }
+
+.signal-wire__item {
+    flex-shrink: 0;
+    min-width: 170px;
+    max-width: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 7px 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+.signal-wire__item--live { border-color: rgba(6, 214, 160, 0.35); }
+.signal-wire__item--warn { border-color: rgba(240, 165, 0, 0.4); }
+.signal-wire__item--alert { border-color: rgba(214, 40, 40, 0.5); }
+.signal-wire__item--idle { border-color: var(--border); }
+
+.signal-wire__tag {
+    font-size: 6.5px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+.signal-wire__text {
+    font-size: 9px;
+    line-height: 1.45;
+    color: var(--text-2);
+}
+
+.signal-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.signal-chart__bars {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.signal-chart__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 30px;
+    gap: 6px;
+    align-items: center;
+}
+
+.signal-chart__meta {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.signal-chart__label {
+    font-size: 8px;
+    color: var(--text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.signal-chart__count,
+.signal-chart__share {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: var(--text-3);
+    text-align: right;
+}
+
+.signal-chart__track {
+    width: 100%;
+    height: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.signal-chart__fill {
+    height: 100%;
+    min-width: 10px;
+}
+
+.signal-chart__empty,
+.report-feed__empty {
+    font-size: 9px;
+    color: var(--text-3);
 }
 
 .bottom-bar__sort-group {
@@ -964,6 +1316,12 @@ body {
         --bottom-bar: 170px;
     }
     .report-card { width: 220px; }
+    .bottom-bar__summary {
+        grid-template-columns: minmax(0, 1fr) 210px;
+        min-height: 66px;
+        padding: 6px 12px;
+    }
+    .signal-wire__item { min-width: 150px; }
 }
 
 @media (max-width: 768px) {
@@ -983,6 +1341,30 @@ body {
     .left-panel.open { left: 0; }
     .map-area { grid-column: 1; }
     .mobile-toggle { display: flex !important; }
+    .watch-hud {
+        width: calc(100% - 24px);
+    }
+    .watch-hud__meta {
+        grid-template-columns: 1fr;
+    }
+    .bottom-bar__header {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px 12px;
+    }
+    .bottom-bar__summary {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 8px 12px;
+    }
+    .signal-wire__source,
+    .signal-chart__total {
+        white-space: normal;
+        text-align: right;
+    }
+    .signal-chart__row {
+        grid-template-columns: minmax(0, 1fr) 34px;
+    }
 }
 
 .mobile-toggle {
@@ -1053,6 +1435,20 @@ body {
             </div>
         </div>
 
+        <div class="top-bar__segment">
+            <div class="top-bar__metric">
+                <span class="top-bar__metric-val" id="watch-preset-label">CIVIC</span>
+                <span class="top-bar__metric-label">PRESET</span>
+            </div>
+        </div>
+
+        <div class="top-bar__segment">
+            <div class="top-bar__metric">
+                <span class="top-bar__metric-val" id="watch-active-layers">1</span>
+                <span class="top-bar__metric-label">LAYERS</span>
+            </div>
+        </div>
+
         <div class="top-bar__spacer"></div>
         <div class="top-bar__clock" id="clock">00:00:00</div>
     </div>
@@ -1116,6 +1512,16 @@ body {
             </div>
         </div>
 
+        <div class="panel-section">
+            <div class="panel-title"><span class="panel-title__bar"></span>WATCH PRESETS</div>
+            <div class="preset-grid">
+                <button class="preset-btn active" data-preset="civic">Civic Ops</button>
+                <button class="preset-btn" data-preset="weather">Weather</button>
+                <button class="preset-btn" data-preset="maritime">Maritime</button>
+                <button class="preset-btn" data-preset="air">Air Quality</button>
+            </div>
+        </div>
+
         <!-- Layers -->
         <div class="panel-section">
             <div class="panel-title"><span class="panel-title__bar"></span>LAYERS</div>
@@ -1153,6 +1559,47 @@ body {
             </div>
         </div>
 
+        <div class="panel-section">
+            <div class="panel-title"><span class="panel-title__bar"></span>SOURCE STATUS</div>
+            <div class="source-list">
+                <div class="source-row">
+                    <div class="source-row__meta">
+                        <div class="source-row__name">Report Feed</div>
+                        <div class="source-row__detail" id="src-reports-detail">Awaiting sync</div>
+                    </div>
+                    <div class="source-pill source-pill--idle" id="src-reports">IDLE</div>
+                </div>
+                <div class="source-row">
+                    <div class="source-row__meta">
+                        <div class="source-row__name">Early Warning</div>
+                        <div class="source-row__detail" id="src-warnings-detail">Awaiting sync</div>
+                    </div>
+                    <div class="source-pill source-pill--idle" id="src-warnings">IDLE</div>
+                </div>
+                <div class="source-row">
+                    <div class="source-row__meta">
+                        <div class="source-row__name">Weather Stack</div>
+                        <div class="source-row__detail" id="src-weather-detail">Awaiting sync</div>
+                    </div>
+                    <div class="source-pill source-pill--idle" id="src-weather">IDLE</div>
+                </div>
+                <div class="source-row">
+                    <div class="source-row__meta">
+                        <div class="source-row__name">Marine Ports</div>
+                        <div class="source-row__detail" id="src-marine-detail">Awaiting sync</div>
+                    </div>
+                    <div class="source-pill source-pill--idle" id="src-marine">IDLE</div>
+                </div>
+                <div class="source-row">
+                    <div class="source-row__meta">
+                        <div class="source-row__name">AQI Pulse</div>
+                        <div class="source-row__detail" id="src-aqi-detail">Awaiting sync</div>
+                    </div>
+                    <div class="source-pill source-pill--idle" id="src-aqi">IDLE</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Weather -->
         <div class="panel-section" id="weather-section">
             <div class="panel-title"><span class="panel-title__bar"></span>WEATHER / MARINE</div>
@@ -1170,7 +1617,7 @@ body {
         <div class="panel-section" style="margin-top:auto;">
             <a href="/v2/staff.html" style="font-size:9px; color:var(--text-3); text-decoration:none;">STAFF PORTAL</a>
             <span style="margin:0 6px; color:var(--text-4);">|</span>
-            <a href="/api/reports/geojson" style="font-size:9px; color:var(--text-3); text-decoration:none;">GEOJSON</a>
+            <a href="/api/v2/reports/geojson" style="font-size:9px; color:var(--text-3); text-decoration:none;">GEOJSON</a>
         </div>
     </div>
 
@@ -1187,6 +1634,33 @@ body {
             <div class="map-stat-block">
                 <div class="map-stat-block__val" id="stat-unassigned">—</div>
                 <div class="map-stat-block__label">UNASSIGNED</div>
+            </div>
+        </div>
+
+        <div class="watch-hud">
+            <div class="watch-hud__kicker">Watch Floor</div>
+            <div class="watch-hud__headline">
+                <div class="watch-hud__title" id="hud-preset">CIVIC OPS</div>
+                <div class="watch-hud__alert watch-hud__alert--idle" id="hud-alert-count">Awaiting feed</div>
+            </div>
+            <div class="watch-hud__layers" id="hud-active-layers">Satellite</div>
+            <div class="watch-hud__meta">
+                <div class="watch-hud__meta-item">
+                    <div class="watch-hud__meta-label">Report Feed</div>
+                    <div class="watch-hud__meta-value" id="hud-reports-meta">Awaiting sync</div>
+                </div>
+                <div class="watch-hud__meta-item">
+                    <div class="watch-hud__meta-label">Weather Stack</div>
+                    <div class="watch-hud__meta-value" id="hud-weather-meta">Awaiting sync</div>
+                </div>
+                <div class="watch-hud__meta-item">
+                    <div class="watch-hud__meta-label">Marine Ports</div>
+                    <div class="watch-hud__meta-value" id="hud-marine-meta">Awaiting sync</div>
+                </div>
+                <div class="watch-hud__meta-item">
+                    <div class="watch-hud__meta-label">AQI Pulse</div>
+                    <div class="watch-hud__meta-value" id="hud-aqi-meta">Awaiting sync</div>
+                </div>
             </div>
         </div>
 
@@ -1222,14 +1696,37 @@ body {
         <div class="bottom-bar__header">
             <div class="bottom-bar__title">
                 <span style="width:8px;height:8px;background:var(--red);display:inline-block;"></span>
-                REPORTS FEED
-                <span class="bottom-bar__count" id="feed-count">0 items</span>
+                SIGNAL BAR
+                <span class="bottom-bar__count" id="feed-count">0 signals</span>
             </div>
             <div class="bottom-bar__sort-group">
                 <button class="sort-btn active" data-sort="priority">PRIORITY</button>
                 <button class="sort-btn" data-sort="newest">NEWEST</button>
                 <button class="sort-btn" data-sort="oldest">OLDEST</button>
                 <button class="sort-btn" data-sort="aging">AGING</button>
+            </div>
+        </div>
+        <div class="bottom-bar__summary">
+            <div class="signal-wire">
+                <div class="signal-wire__header">
+                    <div class="signal-wire__label">Verified Signal Wire</div>
+                    <div class="signal-wire__source" id="signal-wire-source">Awaiting verified sources</div>
+                </div>
+                <div class="signal-wire__items" id="signal-wire">
+                    <div class="signal-wire__item signal-wire__item--idle">
+                        <div class="signal-wire__tag">Idle</div>
+                        <div class="signal-wire__text">Waiting for reports and warnings.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="signal-chart">
+                <div class="signal-chart__header">
+                    <div class="signal-chart__title">Signal Categories</div>
+                    <div class="signal-chart__total" id="signal-chart-total">0 in view</div>
+                </div>
+                <div class="signal-chart__bars" id="signal-category-chart">
+                    <div class="signal-chart__empty">No categories loaded yet.</div>
+                </div>
             </div>
         </div>
         <div class="bottom-bar__feed" id="report-feed"></div>
@@ -1246,11 +1743,34 @@ body {
 
 // ─── CONFIGURATION ───
 const API_BASE = '/api/v2';
+
+// ─── AUTH HELPER ───
+// Dashboard write operations require an API key (set DASHBOARD_API_KEY on server)
+function getApiKey() {
+    var k = sessionStorage.getItem('dashboard_api_key');
+    if (!k) {
+        k = prompt('Enter dashboard API key:');
+        if (k) sessionStorage.setItem('dashboard_api_key', k);
+    }
+    return k || '';
+}
+function authHeaders(extra) {
+    var h = { 'X-API-Key': getApiKey() };
+    if (extra) Object.assign(h, extra);
+    return h;
+}
 const PHUKET_CENTER = [7.8804, 98.3923];
 const DEFAULT_CENTER = [13.75, 100.5];
 const DEFAULT_ZOOM = 6;
 const SLA_HOURS = 48;
 const CACHE_TTL = 60000;
+const REFRESH_INTERVALS = {
+    reports: 30000,
+    weather: 300000,
+    marine: 1800000,
+    aqi: 300000,
+    hud: 10000
+};
 
 const CATEGORY_COLORS = {
     'ถนน/ทางเท้า': '#D62828',
@@ -1271,6 +1791,44 @@ const STATUS_MAP = {
     'completed': { label: 'COMPLETED', color: '#06D6A0' }
 };
 
+const LAYER_LABELS = {
+    satellite: 'Satellite',
+    nasa: 'NASA True Color',
+    infrared: 'IR Cloud',
+    terrain: 'Terrain',
+    heatmap: 'Category Heatmap',
+    grid: 'Distance Grid',
+    searoutes: 'Sea Routes',
+    aqi: 'AQI Stations'
+};
+
+const WATCH_PRESETS = {
+    civic: {
+        metric: 'CIVIC',
+        label: 'CIVIC OPS',
+        mapMode: 'unsolved',
+        layers: { satellite: true, nasa: false, infrared: false, terrain: false, heatmap: false, grid: false, searoutes: false, aqi: false }
+    },
+    weather: {
+        metric: 'WX',
+        label: 'WEATHER STACK',
+        mapMode: 'all',
+        layers: { satellite: false, nasa: true, infrared: true, terrain: true, heatmap: false, grid: false, searoutes: false, aqi: false }
+    },
+    maritime: {
+        metric: 'SEA',
+        label: 'MARITIME WATCH',
+        mapMode: 'all',
+        layers: { satellite: true, nasa: false, infrared: false, terrain: false, heatmap: false, grid: true, searoutes: true, aqi: false }
+    },
+    air: {
+        metric: 'AIR',
+        label: 'AIR QUALITY',
+        mapMode: 'all',
+        layers: { satellite: true, nasa: false, infrared: false, terrain: false, heatmap: true, grid: false, searoutes: false, aqi: true }
+    }
+};
+
 // ─── STATE ───
 let allReports = [];
 let filteredReports = [];
@@ -1288,6 +1846,19 @@ let gridLayer = null;
 let seaRoutesLayer = null;
 let aqiLayer = null;
 let marinePorts = [];
+let watchState = {
+    preset: 'civic',
+    warnings: { alerts: [] },
+    weather: null,
+    aqiSnapshot: [],
+    sources: {
+        reports: { tone: 'idle', detail: 'Awaiting sync', updatedAt: null },
+        warnings: { tone: 'idle', detail: 'Awaiting sync', updatedAt: null },
+        weather: { tone: 'idle', detail: 'Awaiting sync', updatedAt: null },
+        marine: { tone: 'idle', detail: 'Awaiting sync', updatedAt: null },
+        aqi: { tone: 'idle', detail: 'Awaiting sync', updatedAt: null }
+    }
+};
 
 // ─── CLOCK ───
 function updateClock() {
@@ -1297,6 +1868,301 @@ function updateClock() {
 }
 setInterval(updateClock, 1000);
 updateClock();
+
+function formatElapsed(updatedAt) {
+    if (!updatedAt) return 'IDLE';
+    var diffMs = Math.max(0, Date.now() - new Date(updatedAt).getTime());
+    var diffSec = Math.round(diffMs / 1000);
+    if (diffSec < 60) return diffSec + 's';
+    var diffMin = Math.round(diffSec / 60);
+    if (diffMin < 60) return diffMin + 'm';
+    var diffHr = Math.round(diffMin / 60);
+    return diffHr + 'h';
+}
+
+function escapeHtml(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function truncateText(value, limit) {
+    var text = String(value || '').trim();
+    if (text.length <= limit) return text;
+    return text.slice(0, Math.max(0, limit - 1)).trim() + '...';
+}
+
+function getSignalCategoryEntries(reports) {
+    var counts = {};
+    reports.forEach(function(report) {
+        var category = report.problem_type || 'อื่นๆ';
+        counts[category] = (counts[category] || 0) + 1;
+    });
+
+    return Object.keys(counts).map(function(category) {
+        return {
+            label: category,
+            count: counts[category],
+            color: CATEGORY_COLORS[category] || '#999'
+        };
+    }).sort(function(a, b) {
+        return b.count - a.count;
+    });
+}
+
+function buildSignalWireItems() {
+    var alerts = Array.isArray(watchState.warnings && watchState.warnings.alerts) ? watchState.warnings.alerts : [];
+    var activeReports = filteredReports.filter(function(report) { return report.status !== 'completed'; });
+    var categoryEntries = getSignalCategoryEntries(activeReports.length ? activeReports : filteredReports);
+    var items = [];
+
+    alerts.slice(0, 2).forEach(function(alert) {
+        items.push({
+            tone: alert.severity === 'high' ? 'alert' : 'warn',
+            tag: alert.type === 'CATEGORY_SPIKE' ? 'Spike' : (alert.type === 'GEOGRAPHIC_CLUSTER' ? 'Cluster' : 'Alert'),
+            text: alert.message || 'Warning detected'
+        });
+    });
+
+    var urgentCount = activeReports.filter(function(report) { return report.urgency === 'สูง'; }).length;
+    if (urgentCount > 0) {
+        items.push({
+            tone: 'alert',
+            tag: 'Urgent',
+            text: urgentCount + ' unresolved high-urgency signals'
+        });
+    }
+
+    var slaRiskCount = activeReports.filter(function(report) {
+        return (Date.now() - new Date(report.timestamp).getTime()) / 3600000 > SLA_HOURS;
+    }).length;
+    if (slaRiskCount > 0) {
+        items.push({
+            tone: 'warn',
+            tag: 'SLA',
+            text: slaRiskCount + ' signals older than ' + SLA_HOURS + 'h'
+        });
+    }
+
+    if (categoryEntries.length > 0) {
+        items.push({
+            tone: 'live',
+            tag: 'Lead',
+            text: categoryEntries[0].label + ' leads with ' + categoryEntries[0].count + ' signal' + (categoryEntries[0].count > 1 ? 's' : '')
+        });
+    }
+
+    var newestReport = filteredReports.slice().sort(function(a, b) {
+        return new Date(b.timestamp) - new Date(a.timestamp);
+    })[0];
+    if (newestReport) {
+        items.push({
+            tone: 'live',
+            tag: 'Latest',
+            text: '#' + (newestReport.ticket_number || newestReport.report_id || '—') + ' • ' +
+                (newestReport.problem_type || 'อื่นๆ') + ' • ' +
+                truncateText(newestReport.location_text || newestReport.description || 'New signal received', 58)
+        });
+    }
+
+    if (items.length === 0) {
+        items.push({
+            tone: 'idle',
+            tag: 'Idle',
+            text: filteredReports.length === 0 ? 'No signals match the current view' : 'Waiting for verified warnings'
+        });
+    }
+
+    return items.slice(0, 5);
+}
+
+function renderSignalWire() {
+    var wire = document.getElementById('signal-wire');
+    var source = document.getElementById('signal-wire-source');
+    var alerts = Array.isArray(watchState.warnings && watchState.warnings.alerts) ? watchState.warnings.alerts : [];
+    var sourceParts = [];
+
+    if (watchState.sources.reports.updatedAt) sourceParts.push('reports ' + formatElapsed(watchState.sources.reports.updatedAt));
+    if (watchState.sources.warnings.updatedAt) sourceParts.push('warnings ' + formatElapsed(watchState.sources.warnings.updatedAt));
+
+    source.textContent = filteredReports.length + ' in view • ' + alerts.length + ' warnings' +
+        (sourceParts.length ? ' • ' + sourceParts.join(' • ') : '');
+
+    wire.innerHTML = buildSignalWireItems().map(function(item) {
+        return '<div class="signal-wire__item signal-wire__item--' + item.tone + '">' +
+            '<div class="signal-wire__tag">' + escapeHtml(item.tag) + '</div>' +
+            '<div class="signal-wire__text">' + escapeHtml(item.text) + '</div>' +
+            '</div>';
+    }).join('');
+}
+
+function renderSignalCategoryChart() {
+    var chart = document.getElementById('signal-category-chart');
+    var total = document.getElementById('signal-chart-total');
+    var entries = getSignalCategoryEntries(filteredReports).slice(0, 5);
+    var maxCount = entries.length ? entries[0].count : 0;
+
+    total.textContent = filteredReports.length + ' in view';
+
+    if (!entries.length) {
+        chart.innerHTML = '<div class="signal-chart__empty">No categories in the current filter.</div>';
+        return;
+    }
+
+    chart.innerHTML = entries.map(function(entry) {
+        var width = maxCount ? Math.round(entry.count / maxCount * 100) : 0;
+        var share = filteredReports.length ? Math.round(entry.count / filteredReports.length * 100) : 0;
+
+        return '<div class="signal-chart__row">' +
+            '<div>' +
+            '<div class="signal-chart__meta">' +
+            '<span class="signal-chart__label">' + escapeHtml(entry.label) + '</span>' +
+            '<span class="signal-chart__count">' + entry.count + '</span>' +
+            '</div>' +
+            '<div class="signal-chart__track">' +
+            '<div class="signal-chart__fill" style="width:' + Math.max(width, 10) + '%;background:' + entry.color + '"></div>' +
+            '</div>' +
+            '</div>' +
+            '<div class="signal-chart__share">' + share + '%</div>' +
+            '</div>';
+    }).join('');
+}
+
+function setSourceStatus(key, tone, detail, updatedAt) {
+    watchState.sources[key] = {
+        tone: tone || 'idle',
+        detail: detail || 'Awaiting sync',
+        updatedAt: updatedAt || null
+    };
+    updateWatchSurfaces();
+}
+
+function renderSourceStatus() {
+    Object.keys(watchState.sources).forEach(function(key) {
+        var source = watchState.sources[key];
+        var pill = document.getElementById('src-' + key);
+        var detail = document.getElementById('src-' + key + '-detail');
+        if (pill) {
+            pill.className = 'source-pill source-pill--' + (source.tone || 'idle');
+            pill.textContent = source.updatedAt ? (source.tone || 'idle').toUpperCase() + ' • ' + formatElapsed(source.updatedAt) : 'IDLE';
+        }
+        if (detail) {
+            detail.textContent = source.detail || 'Awaiting sync';
+        }
+    });
+}
+
+function getActiveLayerLabels() {
+    return Object.keys(layerState).filter(function(name) { return layerState[name]; }).map(function(name) {
+        return LAYER_LABELS[name];
+    });
+}
+
+function syncLayerToggleBoxes() {
+    Object.keys(layerState).forEach(function(name) {
+        var box = document.getElementById('tog-' + name);
+        if (box) box.classList.toggle('active', !!layerState[name]);
+    });
+}
+
+function syncModeButtons() {
+    document.querySelectorAll('.mode-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.mode === mapMode);
+    });
+}
+
+function syncPresetButtons() {
+    document.querySelectorAll('.preset-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.preset === watchState.preset);
+    });
+}
+
+function syncContextLayers() {
+    ['satellite', 'nasa', 'infrared', 'terrain'].forEach(function(name) {
+        if (!contextLayers[name]) return;
+        var shouldShow = !!layerState[name];
+        var isVisible = map.hasLayer(contextLayers[name]);
+        if (shouldShow && !isVisible) contextLayers[name].addTo(map);
+        if (!shouldShow && isVisible) map.removeLayer(contextLayers[name]);
+    });
+}
+
+function buildHudMeta(key) {
+    var source = watchState.sources[key];
+    if (!source || !source.updatedAt) return source && source.detail ? source.detail : 'Awaiting sync';
+    return (source.detail || 'Live') + ' • ' + formatElapsed(source.updatedAt);
+}
+
+function updateWatchHud() {
+    var preset = WATCH_PRESETS[watchState.preset] || WATCH_PRESETS.civic;
+    var activeLayers = getActiveLayerLabels();
+    var alerts = Array.isArray(watchState.warnings && watchState.warnings.alerts) ? watchState.warnings.alerts : [];
+    var alertTone = 'live';
+    var alertText = 'No active warnings';
+
+    if (!watchState.sources.reports.updatedAt) {
+        alertTone = 'idle';
+        alertText = 'Awaiting feed';
+    } else if (alerts.length > 0) {
+        alertTone = 'alert';
+        alertText = alerts.length + ' active warning' + (alerts.length > 1 ? 's' : '');
+    }
+
+    document.getElementById('watch-preset-label').textContent = preset.metric;
+    document.getElementById('watch-active-layers').textContent = String(activeLayers.length || 0);
+    document.getElementById('hud-preset').textContent = preset.label;
+    document.getElementById('hud-active-layers').textContent = activeLayers.length > 0
+        ? activeLayers.join(' • ')
+        : 'No overlays active';
+
+    var alertEl = document.getElementById('hud-alert-count');
+    alertEl.className = 'watch-hud__alert watch-hud__alert--' + alertTone;
+    alertEl.textContent = alertText;
+
+    document.getElementById('hud-reports-meta').textContent = buildHudMeta('reports');
+    document.getElementById('hud-weather-meta').textContent = buildHudMeta('weather');
+    document.getElementById('hud-marine-meta').textContent = buildHudMeta('marine');
+    document.getElementById('hud-aqi-meta').textContent = buildHudMeta('aqi');
+}
+
+function updateWatchSurfaces() {
+    renderSourceStatus();
+    updateWatchHud();
+}
+
+function syncOverlayVisuals() {
+    syncContextLayers();
+    renderHeatmaps();
+
+    if (layerState.grid) renderGrid();
+    else if (gridLayer) { map.removeLayer(gridLayer); gridLayer = null; }
+
+    if (layerState.searoutes) renderSeaRoutes();
+    else if (seaRoutesLayer) { map.removeLayer(seaRoutesLayer); seaRoutesLayer = null; }
+
+    if (layerState.aqi) renderAQI();
+    else if (aqiLayer) { map.removeLayer(aqiLayer); aqiLayer = null; }
+
+    updateLegend();
+    updateWatchHud();
+}
+
+function applyWatchPreset(name) {
+    var preset = WATCH_PRESETS[name];
+    if (!preset) return;
+
+    watchState.preset = name;
+    layerState = Object.assign({}, layerState, preset.layers);
+    mapMode = preset.mapMode;
+
+    syncPresetButtons();
+    syncModeButtons();
+    syncLayerToggleBoxes();
+    render();
+}
 
 // ─── MAP INITIALIZATION ───
 function initMap() {
@@ -1376,28 +2242,8 @@ function initMap() {
 // ─── LAYER MANAGEMENT ───
 function toggleLayer(name) {
     layerState[name] = !layerState[name];
-    var box = document.getElementById('tog-' + name);
-    if (box) box.classList.toggle('active', layerState[name]);
-
-    if (['satellite', 'nasa', 'infrared', 'terrain'].indexOf(name) !== -1) {
-        if (layerState[name]) {
-            contextLayers[name].addTo(map);
-        } else {
-            map.removeLayer(contextLayers[name]);
-        }
-    } else if (name === 'heatmap') {
-        renderHeatmaps();
-    } else if (name === 'grid') {
-        if (layerState.grid) renderGrid();
-        else if (gridLayer) { map.removeLayer(gridLayer); gridLayer = null; }
-    } else if (name === 'searoutes') {
-        if (layerState.searoutes) renderSeaRoutes();
-        else if (seaRoutesLayer) { map.removeLayer(seaRoutesLayer); seaRoutesLayer = null; }
-    } else if (name === 'aqi') {
-        if (layerState.aqi) renderAQI();
-        else if (aqiLayer) { map.removeLayer(aqiLayer); aqiLayer = null; }
-    }
-    updateLegend();
+    syncLayerToggleBoxes();
+    syncOverlayVisuals();
 }
 
 // Layer toggle click handlers
@@ -1414,6 +2260,21 @@ async function fetchData() {
 
         if (!reportsRes.ok) throw new Error('Failed to fetch reports');
         allReports = await reportsRes.json();
+        watchState.warnings = { alerts: [] };
+
+        if (warningsRes && warningsRes.ok) {
+            watchState.warnings = await warningsRes.json();
+        }
+
+        var warningAlerts = Array.isArray(watchState.warnings && watchState.warnings.alerts) ? watchState.warnings.alerts : [];
+        var warningDevices = watchState.warnings && watchState.warnings.analytics && watchState.warnings.analytics.uniqueDevices;
+        setSourceStatus('reports', 'live', allReports.length + ' reports loaded', new Date().toISOString());
+        setSourceStatus(
+            'warnings',
+            warningAlerts.length > 0 ? 'alert' : 'live',
+            warningAlerts.length + ' alerts' + (warningDevices ? ' • ' + warningDevices + ' devices' : ''),
+            new Date().toISOString()
+        );
 
         // Update the global reference
         window.allReports = allReports;
@@ -1431,8 +2292,32 @@ async function fetchData() {
 async function fetchMarinePorts() {
     try {
         var res = await fetch(API_BASE + '/marine/phuket-ports');
-        if (res.ok) marinePorts = await res.json();
-    } catch(e) {}
+        if (!res.ok) throw new Error('Marine ports unavailable');
+        var payload = await res.json();
+        marinePorts = Array.isArray(payload) ? payload : (payload.ports || []);
+        setSourceStatus('marine', 'live', marinePorts.length + ' ports indexed', payload.fetchedAt || new Date().toISOString());
+    } catch(e) {
+        setSourceStatus('marine', 'idle', 'Marine ports unavailable');
+    }
+}
+
+async function fetchAqiSnapshot() {
+    try {
+        var res = await fetch(API_BASE + '/live/aqi');
+        if (!res.ok) throw new Error('AQI pulse unavailable');
+        var payload = await res.json();
+        var locations = Array.isArray(payload.locations) ? payload.locations : [];
+        var maxAqi = locations.reduce(function(max, item) {
+            return Math.max(max, item && item.aqi ? item.aqi : 0);
+        }, 0);
+        var tone = 'live';
+        if (maxAqi > 150) tone = 'alert';
+        else if (maxAqi > 100) tone = 'warn';
+        watchState.aqiSnapshot = locations;
+        setSourceStatus('aqi', tone, locations.length + ' cities • max ' + maxAqi, payload.lastUpdate || new Date().toISOString());
+    } catch (e) {
+        setSourceStatus('aqi', 'idle', 'AQI pulse unavailable');
+    }
 }
 
 // ─── FILTERING ───
@@ -1513,9 +2398,10 @@ function render() {
     updateStats();
     populateFilterOptions();
     renderMarkers();
+    renderSignalWire();
+    renderSignalCategoryChart();
     renderFeed();
-    if (layerState.heatmap) renderHeatmaps();
-    updateLegend();
+    syncOverlayVisuals();
 }
 
 function updateStats() {
@@ -1839,7 +2725,12 @@ function updateLegend() {
 // ─── BOTTOM BAR FEED ───
 function renderFeed() {
     var feed = document.getElementById('report-feed');
-    document.getElementById('feed-count').textContent = filteredReports.length + ' items';
+    document.getElementById('feed-count').textContent = filteredReports.length + ' signals';
+
+    if (!filteredReports.length) {
+        feed.innerHTML = '<div class="report-feed__empty">No reports match the current filter set.</div>';
+        return;
+    }
 
     var html = '';
     filteredReports.forEach(function(r) {
@@ -1990,9 +2881,9 @@ async function updateReportStatus() {
     var staffComment = document.getElementById('detail-staff-comment').value;
 
     try {
-        var res = await fetch('/api/reports/' + selectedReport.report_id + '/status', {
+        var res = await fetch(API_BASE + '/reports/' + selectedReport.report_id + '/status', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ status: newStatus, staffName: staffName, staffComment: staffComment })
         });
         if (res.ok) {
@@ -2036,6 +2927,7 @@ async function fetchWeather() {
         var riskColor = 'var(--green)';
         if (waveH > 2 || windSpeed > 40) { marineRisk = 'HIGH CAUTION'; riskColor = 'var(--red)'; }
         else if (waveH > 1 || windSpeed > 25 || totalRain > 10) { marineRisk = 'MODERATE'; riskColor = 'var(--yellow)'; }
+        watchState.weather = { marineRisk: marineRisk, waveHeight: waveH, windSpeed: windSpeed, rainfall: totalRain };
 
         document.getElementById('weather-content').innerHTML =
             '<div class="weather-row"><span class="weather-label">Temp</span><span class="weather-val">' + c.temperature_2m + '°C</span></div>' +
@@ -2048,8 +2940,15 @@ async function fetchWeather() {
             '<div style="margin-top:6px;padding:4px 6px;border:1px solid ' + riskColor + ';display:inline-block;">' +
             '<span style="font-size:7px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:' + riskColor + '">MARINE: ' + marineRisk + '</span>' +
             '</div>';
+        setSourceStatus(
+            'weather',
+            marineRisk === 'HIGH CAUTION' ? 'alert' : marineRisk === 'MODERATE' ? 'warn' : 'live',
+            'wind ' + windSpeed + ' km/h • wave ' + waveH + 'm',
+            new Date().toISOString()
+        );
     } catch(e) {
         document.getElementById('weather-content').textContent = 'Weather data unavailable';
+        setSourceStatus('weather', 'idle', 'Weather data unavailable');
     }
 }
 
@@ -2128,6 +3027,12 @@ document.querySelectorAll('.sort-btn').forEach(function(el) {
     });
 });
 
+document.querySelectorAll('.preset-btn').forEach(function(el) {
+    el.addEventListener('click', function() {
+        applyWatchPreset(el.dataset.preset);
+    });
+});
+
 // ─── INIT ───
 window.openDetail = openDetail;
 window.closeDetail = closeDetail;
@@ -2136,9 +3041,20 @@ window.allReports = allReports;
 
 function init() {
     initMap();
+    syncLayerToggleBoxes();
+    syncModeButtons();
+    syncPresetButtons();
+    updateWatchSurfaces();
+    applyWatchPreset(watchState.preset);
     fetchData();
     fetchWeather();
     fetchMarinePorts();
+    fetchAqiSnapshot();
+    setInterval(fetchData, REFRESH_INTERVALS.reports);
+    setInterval(fetchWeather, REFRESH_INTERVALS.weather);
+    setInterval(fetchMarinePorts, REFRESH_INTERVALS.marine);
+    setInterval(fetchAqiSnapshot, REFRESH_INTERVALS.aqi);
+    setInterval(updateWatchSurfaces, REFRESH_INTERVALS.hud);
 }
 
 init();

@@ -21,7 +21,7 @@ import { initializeSpreadsheet, getLatestBrief } from './services/googleSheets.j
 import { uploadImage } from './services/googleDrive.js';
 import { indexKnowledgeBase } from './services/knowledgeBase.js';
 import { getQueueHealthSnapshot, startMessageWorker } from './services/messageQueue.service.js';
-import { notificationService, setTelegramBots } from './services/notification.service.js';
+import { notificationService } from './services/notification.service.js';
 import { analyticsService } from './services/analytics.service.js';
 import { policyEngine } from './services/policyEngine.js';
 import { isSupabaseEnabled } from './services/supabase.js';
@@ -29,13 +29,17 @@ import { getReportById, listReports, updateReportRecord } from './services/repor
 
 // Handlers
 import { handleWebhookEvent } from './handlers/line.handler.js';
-import { createBot } from './handlers/telegram.handler.js';
 import { hydrateConversationStates } from './handlers/conversationFlow.js';
 import { debugLogger } from './handlers/debugLogger.js';
 import { hydrateConversationMemory } from './services/conversationMemory.js';
+import {
+    activateTelegramWebhookRegistrations,
+    registerTelegramWebhookHandlers
+} from './handlers/telegramWebhookSetup.js';
 
 // Middleware
 import { errorHandler, notFoundHandler, requestLogger, asyncHandler } from './middleware/errorHandler.js';
+import { requireApiKey } from './middleware/apiAuth.js';
 
 const log = loggers.api;
 
@@ -130,14 +134,13 @@ app.get('/auth/google', (req, res) => {
 app.get('/oauth2callback', asyncHandler(async (req, res) => {
     const { code } = req.query;
     const { tokens } = await oauth2Client.getToken(code);
-    log.info('OAuth tokens received');
-    console.log('REFRESH_TOKEN:', tokens.refresh_token); // Valid for terminal copying
+    log.info('OAuth tokens received — check server logs');
+    // Token is logged server-side only; never sent to the browser
+    console.log('REFRESH_TOKEN:', tokens.refresh_token);
     res.send(`
         <h1>Authentication Successful!</h1>
-        <p>Please update your .env file with this Refresh Token:</p>
-        <pre style="background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto;">${tokens.refresh_token}</pre>
-        <p>Full Response:</p>
-        <pre>${JSON.stringify(tokens, null, 2)}</pre>
+        <p>Your refresh token has been printed to the <strong>server console</strong>.</p>
+        <p>Copy it from there and add it to your environment variables.</p>
     `);
 }));
 
@@ -281,7 +284,7 @@ app.get(['/api/reports', '/api/v1/reports', '/api/v2/reports'], asyncHandler(asy
 }));
 
 // Upload endpoint
-app.post(['/api/upload', '/api/v1/upload', '/api/v2/upload'], upload.single('image'), asyncHandler(async (req, res) => {
+app.post(['/api/upload', '/api/v1/upload', '/api/v2/upload'], upload.single('image'), requireApiKey, asyncHandler(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     const filename = `proof-${Date.now()}-${req.file.originalname.replace(/\s/g, '_')}`;
@@ -460,8 +463,7 @@ app.get(['/api/reports/geojson', '/api/v1/reports/geojson', '/api/v2/reports/geo
                     urgency: r.urgency,
                     status: r.status,
                     summary: r.ai_summary,
-                    timestamp: r.timestamp,
-                    deviceId: r.user_id
+                    timestamp: r.timestamp
                 }
             }))
     };
@@ -490,7 +492,7 @@ app.get(['/api/analytics/social', '/api/v1/analytics/social', '/api/v2/analytics
 }));
 
 // Intelligence Briefs
-app.post(['/api/intelligence/generate', '/api/v1/intelligence/generate', '/api/v2/intelligence/generate'], asyncHandler(async (req, res) => {
+app.post(['/api/intelligence/generate', '/api/v1/intelligence/generate', '/api/v2/intelligence/generate'], requireApiKey, asyncHandler(async (req, res) => {
     const brief = await policyEngine.generateBrief();
     res.json(brief);
 }));
@@ -534,7 +536,7 @@ app.get('/api/v2/live/aqi', asyncHandler(async (req, res) => {
 }));
 
 // Update status endpoint
-app.post(['/api/reports/:id/status', '/api/v1/reports/:id/status', '/api/v2/reports/:id/status'], express.json(), asyncHandler(async (req, res) => {
+app.post(['/api/reports/:id/status', '/api/v1/reports/:id/status', '/api/v2/reports/:id/status'], express.json(), requireApiKey, asyncHandler(async (req, res) => {
     const version = getVersion(req);
     const { id } = req.params;
     const { status, staffName, staffComment, teamName, internalNotes, solutionImageUrl } = req.body;
@@ -575,7 +577,7 @@ app.post(['/api/reports/:id/status', '/api/v1/reports/:id/status', '/api/v2/repo
 }));
 
 // Update category
-app.post(['/api/reports/:id/category', '/api/v1/reports/:id/category', '/api/v2/reports/:id/category'], express.json(), asyncHandler(async (req, res) => {
+app.post(['/api/reports/:id/category', '/api/v1/reports/:id/category', '/api/v2/reports/:id/category'], express.json(), requireApiKey, asyncHandler(async (req, res) => {
     const version = getVersion(req);
     const { id } = req.params;
     const { category } = req.body;
@@ -588,7 +590,7 @@ app.post(['/api/reports/:id/category', '/api/v1/reports/:id/category', '/api/v2/
 }));
 
 // Toggle lock
-app.post(['/api/reports/:id/lock', '/api/v1/reports/:id/lock', '/api/v2/reports/:id/lock'], express.json(), asyncHandler(async (req, res) => {
+app.post(['/api/reports/:id/lock', '/api/v1/reports/:id/lock', '/api/v2/reports/:id/lock'], express.json(), requireApiKey, asyncHandler(async (req, res) => {
     const version = getVersion(req);
     const { id } = req.params;
     const { locked } = req.body;
@@ -600,8 +602,8 @@ app.post(['/api/reports/:id/lock', '/api/v1/reports/:id/lock', '/api/v2/reports/
     res.json({ success: true });
 }));
 
-// Debug center
-app.get('/api/debug-center', asyncHandler(async (req, res) => {
+// Debug center — protected in production
+app.get('/api/debug-center', requireApiKey, asyncHandler(async (req, res) => {
     const profile = await lineClient.getBotInfo();
     res.json({
         bot: profile,
@@ -610,8 +612,8 @@ app.get('/api/debug-center', asyncHandler(async (req, res) => {
     });
 }));
 
-// Test LINE message
-app.get('/api/test-line', asyncHandler(async (req, res) => {
+// Test LINE message — protected in production
+app.get('/api/test-line', requireApiKey, asyncHandler(async (req, res) => {
     const testUserId = req.query.uid;
     if (!testUserId) return res.status(400).send('Missing uid query param');
 
@@ -663,6 +665,16 @@ app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
     })();
 });
 
+const telegramWebhookRegistrations = registerTelegramWebhookHandlers({
+    app,
+    tokens: [
+        config.telegram.botToken,
+        config.telegram.botToken2
+    ],
+    logger,
+    botStore: telegramBots
+});
+
 // ============================================
 // ERROR HANDLING
 // ============================================
@@ -700,42 +712,13 @@ app.listen(PORT, '0.0.0.0', async () => {
         }
     }, 5000);
 
-    // Start Telegram bots (webhook mode — more reliable than polling on Render)
-    const telegramTokens = [
-        config.telegram.botToken,
-        config.telegram.botToken2
-    ].filter(Boolean);
-
-    if (telegramTokens.length > 0) {
-        logger.info(`Setting up ${telegramTokens.length} Telegram bot(s) in webhook mode...`);
-
-        telegramTokens.forEach((token, index) => {
-            try {
-                const bot = createBot(token);
-                if (bot) {
-                    const webhookPath = `/telegram-webhook-${index}`;
-                    const webhookUrl = config.externalBaseUrl
-                        ? `${config.externalBaseUrl}${webhookPath}`
-                        : null;
-
-                    if (webhookUrl) {
-                        bot.telegram.setWebhook(webhookUrl)
-                            .then(() => logger.info(`✅ Telegram Bot #${index + 1} webhook set at ${webhookPath}`))
-                            .catch(e => logger.error(`Telegram Bot #${index + 1} webhook setup failed`, e));
-                    } else {
-                        logger.warn(`Telegram Bot #${index + 1} webhook URL unavailable; set RENDER_EXTERNAL_URL manually outside Render or deploy on Render with a public URL`);
-                    }
-
-                    // Mount webhook handler on Express
-                    app.use(bot.webhookCallback(webhookPath));
-                    telegramBots.push(bot);
-                }
-            } catch (e) {
-                logger.error(`Telegram Bot #${index + 1} setup error`, e);
-            }
-        });
-
-        // Share bots with notification service
-        setTelegramBots(telegramBots);
+    if (telegramWebhookRegistrations.length > 0) {
+        await Promise.allSettled(
+            activateTelegramWebhookRegistrations({
+                registrations: telegramWebhookRegistrations,
+                externalBaseUrl: config.externalBaseUrl,
+                logger
+            })
+        );
     }
 });

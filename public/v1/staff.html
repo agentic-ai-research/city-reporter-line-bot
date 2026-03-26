@@ -330,6 +330,14 @@
         onchange="submitResolution(this)">
 
     <script>
+        // ─── AUTH HELPER ───
+        function getApiKey() {
+            var k = sessionStorage.getItem('dashboard_api_key');
+            if (!k) { k = prompt('Enter dashboard API key:'); if (k) sessionStorage.setItem('dashboard_api_key', k); }
+            return k || '';
+        }
+        function authHeaders(extra) { var h = { 'X-API-Key': getApiKey() }; if (extra) Object.assign(h, extra); return h; }
+
         lucide.createIcons();
         let reports = [];
         let activeTask = null;
@@ -607,7 +615,7 @@
             try {
                 await fetch(`/api/v1/reports/${activeTask.report_id}/status`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: authHeaders({'Content-Type': 'application/json'}),
                     body: JSON.stringify(body)
                 });
                 closeDetail();
@@ -624,7 +632,7 @@
             document.getElementById('action-bar').innerHTML = `<div class="btn-action w-full bg-zinc-800 text-gray-400 animate-pulse">UPLOADING...</div>`;
             
             try {
-                const res = await fetch('/api/v1/upload', { method: 'POST', body: formData });
+                const res = await fetch('/api/v1/upload', { method: 'POST', headers: { 'X-API-Key': getApiKey() }, body: formData });
                 const data = await res.json();
                 await updateJobStatus('completed', data.url);
             } catch (e) { 

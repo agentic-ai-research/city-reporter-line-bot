@@ -32,12 +32,16 @@ const log = loggers.report;
  * Returns { message, nextStep, isComplete }
  */
 function buildChecklist(state) {
-    const hasImage = !!(state.imageUrl && state.imageUrl !== 'processing');
+    const hasImage = !!(state.imageUrl || state.imageCount > 0);
+    const imageUploaded = !!(state.imageUrl && state.imageUrl !== 'processing');
     const hasLocation = !!(state.latitude || state.locationText);
     const hasContact = !!(state.phone || state.nickname);
 
+    const imageLabel = hasImage && !imageUploaded
+        ? `⏳ รูปภาพ (กำลังอัพโหลด...${state.imageCount > 0 ? ` ${state.imageCount} รูป` : ''})`
+        : `${hasImage ? '✅' : '⬜'} รูปภาพ${state.imageCount > 0 ? ` (${state.imageCount} รูป)` : ''}`;
     const lines = [
-        `${hasImage ? '✅' : '⬜'} รูปภาพ${state.imageCount > 0 ? ` (${state.imageCount} รูป)` : ''}`,
+        imageLabel,
         `${hasLocation ? '✅' : '⬜'} พิกัดสถานที่`,
         `${hasContact ? '✅' : '⬜'} ชื่อ-เบอร์ติดต่อ`
     ];
@@ -174,7 +178,7 @@ class ReportService {
             }
 
             // If we're waiting for contact and user sends a short name
-            const hasImage = !!(state.imageUrl && state.imageUrl !== 'processing');
+            const hasImage = !!(state.imageUrl || state.imageCount > 0);
             const hasLocation = !!(state.latitude || state.locationText);
             const hasContact = !!(state.phone || state.nickname);
 
@@ -357,7 +361,7 @@ class ReportService {
      */
     async handleStatusCheck(userId) {
         try {
-            const reports = await listReports();
+            const reports = await listReports(config.app.reportVersion);
             const userReports = reports.filter(r => r.user_id === userId).slice(-5);
             if (userReports.length === 0) return { action: 'status', response: 'คุณยังไม่มีรายการแจ้งปัญหาครับ 😊' };
             let msg = '📊 สถานะของคุณ:\n\n';
@@ -377,6 +381,7 @@ class ReportService {
     async submitReport(userId, platform = 'line') {
         const state = conversationManager.getState(userId);
         log.info(`📝 Submitting report for ${userId.substring(0, 8)}...`);
+        const reportVersion = config.app.reportVersion;
 
         const ticketNumber = await this.generateTicketNumber();
         const reportId = uuidv4();
@@ -395,7 +400,7 @@ class ReportService {
         log.debug('Report Data Payload:', JSON.stringify(reportData, null, 2));
 
         try {
-            const res = await createReport(reportData);
+            const res = await createReport(reportData, reportVersion);
             log.info(`✅ Report saved. Response: ${JSON.stringify(res)}`);
 
             aiService.clearHistory(userId);
@@ -419,7 +424,7 @@ class ReportService {
 
     async generateTicketNumber() {
         try {
-            return await allocateTicketNumber();
+            return await allocateTicketNumber(config.app.reportVersion);
         } catch (e) { return String(Date.now()).slice(-4); }
     }
 

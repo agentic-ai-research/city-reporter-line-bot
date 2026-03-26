@@ -1109,8 +1109,8 @@
             </div>
             <div class="command-stat-strip">
                 <div class="command-stat">
-                    <p class="command-stat-label">Devices</p>
-                    <h3 id="stat-devices" class="command-stat-value" style="color: var(--accent-blue)">0</h3>
+                    <p class="command-stat-label">People</p>
+                    <h3 id="stat-people" class="command-stat-value" style="color: var(--accent-blue)">0</h3>
                 </div>
                 <div class="command-stat">
                     <p class="command-stat-label">Reports</p>
@@ -1417,6 +1417,21 @@
     </div>
 
     <script>
+        // ─── AUTH HELPER ───
+        function getApiKey() {
+            var k = sessionStorage.getItem('dashboard_api_key');
+            if (!k) {
+                k = prompt('Enter dashboard API key:');
+                if (k) sessionStorage.setItem('dashboard_api_key', k);
+            }
+            return k || '';
+        }
+        function authHeaders(extra) {
+            var h = { 'X-API-Key': getApiKey() };
+            if (extra) Object.assign(h, extra);
+            return h;
+        }
+
         // Thailand Timezone Helpers
         const TH_TZ = 'Asia/Bangkok';
         function thaiTime(d) { const date = new Date(d); return isNaN(date.getTime()) ? d : date.toLocaleString('th-TH', { timeZone: TH_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }); }
@@ -2452,6 +2467,29 @@
             });
         }
 
+        function getReporterKey(report) {
+            const phone = String(report?.phone || '').replace(/\D/g, '');
+            if (phone.length >= 8) return `phone:${phone}`;
+
+            const userId = normalizeText(report?.user_id);
+            if (userId) return `user:${userId}`;
+
+            const nickname = normalizeText(report?.nickname);
+            if (nickname) return `nickname:${nickname}`;
+
+            const reportId = report?.report_id || report?.id || report?.ticket_number;
+            return reportId ? `anonymous:${reportId}` : '';
+        }
+
+        function getUniquePeopleCount(reports) {
+            const seen = new Set();
+            getUniqueReports(reports).forEach((report) => {
+                const key = getReporterKey(report);
+                if (key) seen.add(key);
+            });
+            return seen.size;
+        }
+
         function getDashboardFilters() {
             return {
                 searchTerm: normalizeText(document.getElementById('table-search')?.value),
@@ -2606,6 +2644,7 @@
         }
 
         function updateHeaderStats(uniqueReports) {
+            document.getElementById('stat-people').innerText = getUniquePeopleCount(uniqueReports);
             document.getElementById('stat-total').innerText = uniqueReports.length;
             const solvedCount = uniqueReports.filter((report) => !isReportOpen(report)).length;
             document.getElementById('stat-solved-pct').innerText = `${Math.round((solvedCount / uniqueReports.length) * 100 || 0)}%`;
@@ -2754,11 +2793,6 @@
             try {
                 const res = await fetch('/api/v1/early-warnings');
                 const data = await res.json();
-
-                // Update unique devices stat
-                if (data.analytics?.uniqueDevices) {
-                    document.getElementById('stat-devices').innerText = data.analytics.uniqueDevices;
-                }
 
                 // Display early warnings
                 const panel = document.getElementById('early-warnings-panel');
@@ -3059,7 +3093,7 @@
 
                     await fetch(`/api/v1/reports/${id}/status`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: authHeaders({ 'Content-Type': 'application/json' }),
                         body: JSON.stringify({
                             status: r.status,
                             staffName: r.staff_name,
@@ -3262,7 +3296,7 @@
             try {
                 await fetch(`/api/v1/reports/${id}/category`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ category: newCat })
                 });
                 activeReport.problem_type = newCat;
@@ -3485,7 +3519,7 @@
                 };
                 reader.readAsDataURL(file);
                 try {
-                    const res = await fetch('/api/v1/upload', { method: 'POST', body: formData });
+                    const res = await fetch('/api/v1/upload', { method: 'POST', headers: { 'X-API-Key': getApiKey() }, body: formData });
                     const data = await res.json();
                     currentUploadedUrl = data.url;
                     document.getElementById('preview-text').classList.add('hidden');
@@ -3517,7 +3551,7 @@
             try {
                 const res = await fetch(`/api/v1/reports/${activeReport.report_id}/status`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify(body)
                 });
                 if (res.ok) {
