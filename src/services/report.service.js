@@ -32,14 +32,19 @@ const log = loggers.report;
  * Returns { message, nextStep, isComplete }
  */
 function buildChecklist(state) {
-    const hasImage = !!(state.imageUrl || state.imageCount > 0);
+    const hasImage = !!(state.imageUrl || state.imageCount > 0 || state.aiSummary);
     const imageUploaded = !!(state.imageUrl && state.imageUrl !== 'processing');
     const hasLocation = !!(state.latitude || state.locationText);
     const hasContact = !!(state.phone || state.nickname);
 
-    const imageLabel = hasImage && !imageUploaded
-        ? `⏳ รูปภาพ (กำลังอัพโหลด...${state.imageCount > 0 ? ` ${state.imageCount} รูป` : ''})`
-        : `${hasImage ? '✅' : '⬜'} รูปภาพ${state.imageCount > 0 ? ` (${state.imageCount} รูป)` : ''}`;
+    let imageLabel;
+    if (hasImage && !imageUploaded) {
+        imageLabel = `⏳ รูปภาพ (กำลังอัพโหลด...${state.imageCount > 0 ? ` ${state.imageCount} รูป` : ''})`;
+    } else if (state.imageUrl === 'upload_failed') {
+        imageLabel = `✅ รูปภาพ (AI วิเคราะห์แล้ว)${state.imageCount > 0 ? ` ${state.imageCount} รูป` : ''}`;
+    } else {
+        imageLabel = `${hasImage ? '✅' : '⬜'} รูปภาพ${state.imageCount > 0 ? ` (${state.imageCount} รูป)` : ''}`;
+    }
     const lines = [
         imageLabel,
         `${hasLocation ? '✅' : '⬜'} พิกัดสถานที่`,
@@ -127,7 +132,7 @@ class ReportService {
 
         // ── 2. SKIP (contact info) ──
         if (isCommand(text, SKIP_WORDS) && state.step !== 'idle') {
-            if (state.imageUrl && (state.latitude || state.locationText)) {
+            if ((state.imageUrl || state.aiSummary) && (state.latitude || state.locationText)) {
                 // Has image + location, skipping contact → mark contact as "Anonymous"
                 conversationManager.updateState(userId, { nickname: 'ไม่ระบุ', phone: 'Anonymous' });
                 const updatedState = conversationManager.getState(userId);
@@ -140,7 +145,7 @@ class ReportService {
 
         // ── 3. CONFIRM (OK / Submit) ──
         if (isCommand(text, CONFIRM_WORDS)) {
-            const hasImage = !!(state.imageUrl && state.imageUrl !== 'processing');
+            const hasImage = !!(state.imageUrl && state.imageUrl !== 'processing') || !!state.aiSummary;
             const hasLocation = !!(state.latitude || state.locationText);
 
             if (hasImage && hasLocation) {
@@ -194,7 +199,7 @@ class ReportService {
         }
 
         // ── 5. ACTIVE REPORT — Show reminder checklist ──
-        if (state.step !== 'idle' && state.imageUrl) {
+        if (state.step !== 'idle' && (state.imageUrl || state.aiSummary)) {
             // User sent text during active report that's not a command/phone/name
             // Use AI to respond BUT ALSO append the checklist
             addToHistory(userId, 'user', text);
@@ -392,7 +397,8 @@ class ReportService {
             problemType: state.problemType || 'อื่นๆ', description: state.description || 'ตามรูปภาพ',
             locationText: state.locationText || 'สกัดจาก GPS',
             latitude: state.latitude || '', longitude: state.longitude || '',
-            imageUrl: state.imageUrl || '', aiSummary: state.aiSummary || '',
+            imageUrl: (state.imageUrl && state.imageUrl !== 'upload_failed' && state.imageUrl !== 'processing') ? state.imageUrl : '',
+            aiSummary: state.aiSummary || '',
             detailedAnalysis: state.detailedAnalysis || '', urgency: state.urgency || 'ปกติ',
             status: 'received', isAnonymous: !state.phone || state.phone === 'Anonymous'
         };
@@ -456,8 +462,8 @@ class ReportService {
             return finalUrl;
         }
 
-        log.error('All image uploads failed — keeping imageCount so checklist shows received');
-        conversationManager.updateState(userId, { imageUrl: null });
+        log.error('All image uploads failed — marking as analyzed so flow continues');
+        conversationManager.updateState(userId, { imageUrl: 'upload_failed' });
         return null;
     }
 
