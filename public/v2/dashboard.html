@@ -2924,7 +2924,10 @@ function renderMarkers() {
             );
 
             (function(report) {
-                marker.on('click', function() { openDetail(report); });
+                marker.on('click', function() {
+                    openDetail(report);
+                    scrollFeedTo(report.report_id || report.id);
+                });
             })(r);
 
             markersLayer.addLayer(marker);
@@ -2963,6 +2966,10 @@ function renderMarkers() {
                 '<div style="font-size:9px;color:#888;margin-top:6px;letter-spacing:0.12em;text-transform:uppercase;">📍 ' + a.region + '</div>' +
                 '</div>'
             );
+
+            (function(attraction) {
+                marker.on('click', function() { scrollFeedTo(attraction.id); });
+            })(a);
 
             markersLayer.addLayer(marker);
         });
@@ -3356,6 +3363,16 @@ function renderFeed() {
 }
 
 // Click an attraction card → recenter the map + open its popup
+function scrollFeedTo(dataId) {
+    var card = document.querySelector('#report-feed [data-id="' + dataId + '"]');
+    if (!card) return;
+    document.querySelectorAll('#report-feed .report-card.selected').forEach(function(c) {
+        c.classList.remove('selected');
+    });
+    card.classList.add('selected');
+    card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+}
+
 window.flyToAttraction = function(id) {
     var a = ATTRACTIONS.find(function(x) { return x.id === id; });
     if (!a || !map) return;
