@@ -6,10 +6,10 @@
 <title>SCTH V2 | Command Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="stylesheet" href="/v2/vendor/leaflet.css" />
+<script src="/v2/vendor/leaflet.js"></script>
+<script src="/v2/vendor/leaflet-heat.js"></script>
+<script src="/v2/vendor/marked.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════
    BAUHAUS SYSTEM — V2 COMMAND CENTER
@@ -47,6 +47,7 @@
     /* Dimensions */
     --top-bar: 48px;
     --left-panel: 220px;
+    --right-panel: 220px;
     --bottom-bar: 200px;
 }
 
@@ -68,7 +69,7 @@ body {
 .viewport {
     display: grid;
     grid-template-rows: var(--top-bar) 1fr var(--bottom-bar);
-    grid-template-columns: var(--left-panel) 1fr;
+    grid-template-columns: var(--left-panel) 1fr var(--right-panel);
     height: 100vh;
     width: 100vw;
 }
@@ -527,6 +528,112 @@ body {
 }
 .btn-analysis:hover { opacity: 0.85; }
 .btn-analysis:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ─── RIGHT OVERLAY PANEL (data layer toggles) ─── */
+.right-panel {
+    grid-column: 3;
+    grid-row: 2;
+    background: var(--dark);
+    border-left: 2px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.right-panel::-webkit-scrollbar { width: 3px; }
+.right-panel::-webkit-scrollbar-track { background: transparent; }
+.right-panel::-webkit-scrollbar-thumb { background: var(--border); }
+
+.layer-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    margin-bottom: 6px;
+    user-select: none;
+    transition: border-color 0.12s, background 0.12s;
+}
+.layer-card:hover { border-color: var(--text-3); }
+.layer-card.is-active {
+    border-color: var(--yellow);
+    background: rgba(255, 209, 102, 0.08);
+}
+
+.layer-card__box {
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--text-3);
+    background: transparent;
+    flex-shrink: 0;
+    position: relative;
+}
+.layer-card.is-active .layer-card__box {
+    background: var(--yellow);
+    border-color: var(--yellow);
+}
+.layer-card.is-active .layer-card__box::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    background: var(--black);
+}
+
+.layer-card__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+.layer-card__name {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--text-1);
+}
+.layer-card__meta {
+    font-size: 9px;
+    color: var(--text-3);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+.layer-card__count {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-2);
+}
+.layer-card.is-active .layer-card__count { color: var(--yellow); }
+
+.layer-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+.layer-action-btn {
+    flex: 1;
+    padding: 7px 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color 0.12s, color 0.12s;
+}
+.layer-action-btn:hover { border-color: var(--yellow); color: var(--yellow); }
+
+/* Attraction-specific feed card accents */
+.report-card[data-layer="attractions"] .report-card__urgency {
+    background: var(--yellow);
+}
+.report-card[data-layer="attractions"] .report-card__ticket {
+    color: var(--yellow);
+}
 
 /* ─── MAP CONTAINER ─── */
 .map-area {
@@ -1313,6 +1420,7 @@ body {
 @media (max-width: 1200px) {
     :root {
         --left-panel: 180px;
+        --right-panel: 180px;
         --bottom-bar: 170px;
     }
     .report-card { width: 220px; }
@@ -1329,6 +1437,7 @@ body {
         grid-template-columns: 1fr;
         grid-template-rows: var(--top-bar) 1fr var(--bottom-bar);
     }
+    .right-panel { display: none; }
     .left-panel {
         position: fixed;
         left: -100%;
@@ -1691,6 +1800,33 @@ body {
         </div>
     </div>
 
+    <!-- ═══ RIGHT OVERLAY PANEL ═══ -->
+    <div class="right-panel">
+        <div class="panel-section">
+            <div class="panel-title"><span class="panel-title__bar"></span>OVERLAYS</div>
+            <div class="layer-card is-active" data-layer="problems" id="layer-problems">
+                <div class="layer-card__box"></div>
+                <div class="layer-card__body">
+                    <span class="layer-card__name">Problems</span>
+                    <span class="layer-card__meta">Citizen reports</span>
+                </div>
+                <span class="layer-card__count" id="layer-problems-count">0</span>
+            </div>
+            <div class="layer-card" data-layer="attractions" id="layer-attractions">
+                <div class="layer-card__box"></div>
+                <div class="layer-card__body">
+                    <span class="layer-card__name">Attractions</span>
+                    <span class="layer-card__meta">Tourist sites</span>
+                </div>
+                <span class="layer-card__count" id="layer-attractions-count">0</span>
+            </div>
+            <div class="layer-actions">
+                <button class="layer-action-btn" id="layer-show-all">Show all</button>
+                <button class="layer-action-btn" id="layer-clear">Clear</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ═══ BOTTOM BAR — REPORT FEED ═══ -->
     <div class="bottom-bar">
         <div class="bottom-bar__header">
@@ -1744,6 +1880,159 @@ body {
 // ─── CONFIGURATION ───
 const API_BASE = '/api/v2';
 
+// Rewrite Google Drive `/file/d/<id>/view` URLs (the Drive web viewer) to
+// `lh3.googleusercontent.com/d/<id>` (the direct image CDN). Old reports were
+// stored with the un-embeddable /view form; new uploads already use lh3.
+// Untouched for non-Drive URLs (Supabase, public/uploads, etc.).
+function toEmbeddableImageUrl(url) {
+    if (!url) return url;
+    var m = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=)([\w-]+)/);
+    if (m) return 'https://lh3.googleusercontent.com/d/' + m[1];
+    return url;
+}
+
+// ─── DATA LAYERS ───
+// Phrae Province attraction dataset. Coords from Wikipedia/Wikidata where
+// available; photos from Wikimedia Commons. Each item is normalized into the
+// same shape the feed/map renderers consume so we can merge them with reports.
+var ATTRACTIONS = [
+    { id: 'attr-chohae', name_th: 'วัดพระธาตุช่อแฮ', name_en: 'Wat Phra That Cho Hae', region: 'Mueang Phrae',
+      latitude: 18.08628, longitude: 100.20414,
+      description: 'พระธาตุคู่เมืองแพร่ ศาสนสถานศักดิ์สิทธิ์ที่ต้องมาสักการะ',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B8%98%E0%B8%B2%E0%B8%95%E0%B8%B8%E0%B8%8A%E0%B9%88%E0%B8%AD%E0%B9%81%E0%B8%AE_%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B8%98%E0%B8%B2%E0%B8%95%E0%B8%B8%E0%B8%8A%E0%B9%88%E0%B8%AD%E0%B9%81%E0%B8%AE.jpg/330px-%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B8%98%E0%B8%B2%E0%B8%95%E0%B8%B8%E0%B8%8A%E0%B9%88%E0%B8%AD%E0%B9%81%E0%B8%AE_%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B8%98%E0%B8%B2%E0%B8%95%E0%B8%B8%E0%B8%8A%E0%B9%88%E0%B8%AD%E0%B9%81%E0%B8%AE.jpg' },
+    { id: 'attr-suwannak', name_th: 'วัดสวรรคนิเวศ', name_en: 'Wat Suwannakkhaniwesha', region: 'Mueang Phrae',
+      latitude: 18.1453, longitude: 100.1419,
+      description: 'วัดที่มีถ้ำประดิษฐานพระพุทธรูป และรูปปั้นพระราหูใหญ่ที่สุดในโลก',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2023/10/2-DSC03478-800x534.jpg' },
+    { id: 'attr-skyroad', name_th: 'ถนนลอยฟ้าแพร่', name_en: 'Phrae Sky Road (Hwy 1343)', region: 'Rong Kwang',
+      latitude: 18.2200, longitude: 100.2980,
+      description: 'ถนนสายสวยผ่านเทือกเขา ทิวทัศน์เขียวขจีตลอดเส้นทาง',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2023/09/4phraeroad-800x534.jpg' },
+    { id: 'attr-lunglon', name_th: 'ไร่ลุงลอน', name_en: "Uncle Lon's Farm", region: 'Rong Kwang',
+      latitude: 18.2250, longitude: 100.3050,
+      description: 'ที่พักและคาเฟ่วิวภูเขา ริมถนนลอยฟ้าแพร่',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2023/09/DSC04363-1000x667.jpg' },
+    { id: 'attr-suthon', name_th: 'วัดพระธาตุสุโทนมงคลคีรี', name_en: 'Wat Phra That Suthon Mongkhon Khiri', region: 'Den Chai',
+      latitude: 17.9754, longitude: 100.0153,
+      description: 'รวมเจดีย์ทรงล้านนากว่า 30 องค์ และพิพิธภัณฑ์ไม้สักโบราณ',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Phra_That_Su_Thon_Mongkhon_Khiri_Samakkhi_Tham.jpg/330px-Phra_That_Su_Thon_Mongkhon_Khiri_Samakkhi_Tham.jpg' },
+    { id: 'attr-doileng', name_th: 'วัดพระธาตุดอยเล็ง', name_en: 'Wat Phra That Doi Leng', region: 'Mueang Phrae',
+      latitude: 18.07167, longitude: 100.21528,
+      description: 'วัดบนดอยชมวิวเมืองแพร่แบบพาโนรามา มีจุดชมวิว 360 องศา',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Phra_That_Doi_Leng..JPG/320px-Phra_That_Doi_Leng..JPG' },
+    { id: 'attr-nakhuha', name_th: 'วัดนาคูหา', name_en: 'Wat Nakhuha', region: 'Mueang Phrae',
+      latitude: 18.1280, longitude: 100.1750,
+      description: 'พระพุทธรูปทองคำองค์ใหญ่กลางทุ่งนา มีสะพานไม้ชมทิวทัศน์',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2019/09/1-Nakhuha-Temple-800x534.jpg' },
+    { id: 'attr-khumchaoluang', name_th: 'คุ้มเจ้าหลวง', name_en: 'Khum Chao Luang', region: 'Mueang Phrae',
+      latitude: 18.1440, longitude: 100.1410,
+      description: 'คุ้มไม้สัก 72 ห้อง สถาปัตยกรรมยุคต้นรัชกาลที่ 5',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Khum_Chao_Luang_Muang_Phrae6.jpg/330px-Khum_Chao_Luang_Muang_Phrae6.jpg' },
+    { id: 'attr-wongburi', name_th: 'คุ้มวงศ์บุรี', name_en: 'Khum Wongburi', region: 'Mueang Phrae',
+      latitude: 18.1448, longitude: 100.1405,
+      description: 'คุ้มไม้สักสีชมพูอายุ 100 ปี สถาปัตยกรรมผสมยุโรป-ไทย',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Vongburi_House5.jpg/330px-Vongburi_House5.jpg' },
+    { id: 'attr-phongsunant', name_th: 'วัดพงษ์สุนันท์', name_en: 'Wat Phong Sunant', region: 'Mueang Phrae',
+      latitude: 18.14388, longitude: 100.13656,
+      description: 'วัดเก่าแก่ที่มีพระพุทธไสยาสน์ทองคำ สืบสายตระกูลวงศ์บุรี',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2023/02/DEW_3374-800x534.jpg' },
+    { id: 'attr-chomsawan', name_th: 'วัดจอมสวรรค์', name_en: 'Wat Chom Sawan', region: 'Mueang Phrae',
+      latitude: 18.15063, longitude: 100.15103,
+      description: 'วัดศิลปะพม่าโบราณ รวมโบสถ์และกุฏิไว้ในอาคารเดียว ขึ้นทะเบียนมรดกแห่งชาติ',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/%E0%B9%80%E0%B8%88%E0%B8%94%E0%B8%B5%E0%B8%A2%E0%B9%8C%E0%B8%9E%E0%B8%A1%E0%B9%88%E0%B8%B2%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%88%E0%B8%AD%E0%B8%A1%E0%B8%AA%E0%B8%A7%E0%B8%A3%E0%B8%A3%E0%B8%84%E0%B9%8C.JPG/320px-%E0%B9%80%E0%B8%88%E0%B8%94%E0%B8%B5%E0%B8%A2%E0%B9%8C%E0%B8%9E%E0%B8%A1%E0%B9%88%E0%B8%B2%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%88%E0%B8%AD%E0%B8%A1%E0%B8%AA%E0%B8%A7%E0%B8%A3%E0%B8%A3%E0%B8%84%E0%B9%8C.JPG' },
+    { id: 'attr-wichairacha', name_th: 'คุ้มวิชัยราชา', name_en: 'Khum Wichai Racha', region: 'Mueang Phrae',
+      latitude: 18.14068, longitude: 100.13776,
+      description: 'คุ้มไม้สัก 100 ปี ผสมสถาปัตยกรรมมะนิลาและขนมปังขิง',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/%E0%B8%A5%E0%B8%B2%E0%B8%A2%E0%B8%88%E0%B8%B3%E0%B8%AB%E0%B8%A5%E0%B8%B1%E0%B8%81%E0%B9%84%E0%B8%A1%E0%B9%89%E0%B8%84%E0%B8%B8%E0%B9%89%E0%B8%A1%E0%B8%A7%E0%B8%B4%E0%B8%8A%E0%B8%B1%E0%B8%A2%E0%B8%A3%E0%B8%B2%E0%B8%8A%E0%B8%B2.JPG/320px-%E0%B8%A5%E0%B8%B2%E0%B8%A2%E0%B8%88%E0%B8%B3%E0%B8%AB%E0%B8%A5%E0%B8%B1%E0%B8%81%E0%B9%84%E0%B8%A1%E0%B9%89%E0%B8%84%E0%B8%B8%E0%B9%89%E0%B8%A1%E0%B8%A7%E0%B8%B4%E0%B8%8A%E0%B8%B1%E0%B8%A2%E0%B8%A3%E0%B8%B2%E0%B8%8A%E0%B8%B2.JPG' },
+    { id: 'attr-inkwaen', name_th: 'วัดพระธาตุอินทร์แขวนจำลอง', name_en: 'Wat Phra That In Kwaen', region: 'Mueang Phrae',
+      latitude: 18.1300, longitude: 100.1720,
+      description: 'ประดิษฐานพระพุทธรูปองค์ใหญ่ที่สุดในไทย ศูนย์ปฏิบัติธรรม อากาศดี',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2023/02/DEW_2484-800x534.jpg' },
+    { id: 'attr-phaemuangphi', name_th: 'วนอุทยานแพะเมืองผี', name_en: 'Phae Muang Phi Forest Park', region: 'Mueang Phrae',
+      latitude: 18.18528, longitude: 100.21056,
+      description: 'เสาดินและหน้าผาหินรูปร่างแปลกตา เกิดจากการกัดเซาะทางธรณีวิทยา',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Phae_Mueang_Phi_Forest_Park2.jpg/330px-Phae_Mueang_Phi_Forest_Park2.jpg' },
+    { id: 'attr-doikhiangduean', name_th: 'ดอยเคียงเดือน', name_en: 'Doi Khiang Duean', region: 'Den Chai',
+      latitude: 17.9786, longitude: 100.0586,
+      description: 'บ้านพักไม้สองชั้นกลางขุนเขา วิวธรรมชาติ ที่พักส่วนตัว',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2023/09/2.jpeg' },
+    { id: 'attr-thunghong', name_th: 'บ้านทุ่งโฮ้ง', name_en: 'Ban Thung Hong', region: 'Mueang Phrae',
+      latitude: 18.1350, longitude: 100.1250,
+      description: 'หมู่บ้านผ้าย้อมครามและหม้อห้อม แหล่งช้อปผ้าพื้นเมืองเมืองแพร่',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2019/10/12-SON09733-800x533.jpg' },
+    { id: 'attr-kadkongkao', name_th: 'กาดกองเก่า', name_en: 'Kad Kong Kao Walking Street', region: 'Mueang Phrae',
+      latitude: 18.1445, longitude: 100.1395,
+      description: 'ถนนคนเดินทุกเย็นวันเสาร์ ของดีพื้นเมืองและวัฒนธรรมท้องถิ่น',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2019/10/SON09849-800x533.jpg' },
+    { id: 'attr-slopecoffee', name_th: 'Slope Coffee บ้านเบ้ว', name_en: 'Slope Coffee Ban Beo', region: 'Mueang Phrae',
+      latitude: 18.1460, longitude: 100.1415,
+      description: 'คาเฟ่ในบ้านไม้อายุ 100 ปี บรรยากาศวินเทจกลางเมืองเก่า',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2023/10/DSC03035-800x534.jpg' },
+    { id: 'attr-matjai', name_th: 'บ้านมัดใจ', name_en: 'Ban Mat Jai Homemade & Cafe', region: 'Mueang Phrae',
+      latitude: 18.1500, longitude: 100.1300,
+      description: 'คาเฟ่กลางธรรมชาติ เวิร์คช็อปย้อมครามและเซรามิกทำมือ',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2019/09/5-SON00030-800x533.jpg' },
+    { id: 'attr-banpin', name_th: 'สถานีรถไฟบ้านปิน', name_en: 'Ban Pin Railway Station', region: 'Long',
+      latitude: 18.0961, longitude: 99.8669,
+      description: 'สถานีรถไฟอายุ 100 ปี สถาปัตยกรรมบาวาเรียนหนึ่งเดียวในไทย',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/%E0%B8%AA%E0%B8%96%E0%B8%B2%E0%B8%99%E0%B8%B5%E0%B8%A3%E0%B8%96%E0%B9%84%E0%B8%9F%E0%B8%9A%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9B%E0%B8%B4%E0%B8%99_%E0%B8%9A%E0%B8%A3%E0%B8%B4%E0%B9%80%E0%B8%A7%E0%B8%93%E0%B8%A5%E0%B8%B2%E0%B8%99%E0%B8%88%E0%B8%AD%E0%B8%94%E0%B8%A3%E0%B8%96%E0%B8%AB%E0%B8%99%E0%B9%89%E0%B8%B2%E0%B8%AD%E0%B8%B2%E0%B8%84%E0%B8%B2%E0%B8%A3%E0%B8%AA%E0%B8%96%E0%B8%B2%E0%B8%99%E0%B8%B5.jpg/330px-%E0%B8%AA%E0%B8%96%E0%B8%B2%E0%B8%99%E0%B8%B5%E0%B8%A3%E0%B8%96%E0%B9%84%E0%B8%9F%E0%B8%9A%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%9B%E0%B8%B4%E0%B8%99_%E0%B8%9A%E0%B8%A3%E0%B8%B4%E0%B9%80%E0%B8%A7%E0%B8%93%E0%B8%A5%E0%B8%B2%E0%B8%99%E0%B8%88%E0%B8%AD%E0%B8%94%E0%B8%A3%E0%B8%96%E0%B8%AB%E0%B8%99%E0%B9%89%E0%B8%B2%E0%B8%AD%E0%B8%B2%E0%B8%84%E0%B8%B2%E0%B8%A3%E0%B8%AA%E0%B8%96%E0%B8%B2%E0%B8%99%E0%B8%B5.jpg' },
+    { id: 'attr-komel', name_th: 'พิพิธภัณฑ์โกมลผ้าโบราณ', name_en: 'Komel Ancient Textile Museum', region: 'Long',
+      latitude: 18.0539, longitude: 99.834,
+      description: 'พิพิธภัณฑ์ผ้าไหมโบราณและผลิตภัณฑ์ท้องถิ่น อาคารสีเหลืองโดดเด่น',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2019/09/1-DEW_5936-800x533.jpg' },
+    { id: 'attr-rocketcafe', name_th: 'กาแฟแห่ระเบิด', name_en: 'Phra Rocket Cafe', region: 'Long',
+      latitude: 18.0950, longitude: 99.8700,
+      description: 'คาเฟ่ตกแต่งศิลปะจากตำนาน "เมืองลอง" บ้านปิน',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2019/09/2-SON09380-800x533.jpg' },
+    { id: 'attr-doinoi', name_th: 'พระธาตุดอยน้อย', name_en: 'Phra That Doi Noi', region: 'Long',
+      latitude: 18.0900, longitude: 99.8600,
+      description: 'พระธาตุเจดีย์โบราณบนเนินเขา จุดชมวิวบ้านปินและเมืองลอง',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2019/09/2-DEW_5921-800x533.jpg' },
+    { id: 'attr-sridonkham', name_th: 'วัดศรีดอนคำ', name_en: 'Wat Sri Don Kham', region: 'Long',
+      latitude: 18.07567, longitude: 99.82944,
+      description: 'วัดโบราณบรรจุพระบรมสารีริกธาตุ มีโบราณวัตถุจากสงครามโลกครั้งที่ 2',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B8%98%E0%B8%B2%E0%B8%95%E0%B8%B8%E0%B8%A8%E0%B8%A3%E0%B8%B5%E0%B8%94%E0%B8%AD%E0%B8%99%E0%B8%84%E0%B8%B3_November_2011.jpg/330px-%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B8%98%E0%B8%B2%E0%B8%95%E0%B8%B8%E0%B8%A8%E0%B8%A3%E0%B8%B5%E0%B8%94%E0%B8%AD%E0%B8%99%E0%B8%84%E0%B8%B3_November_2011.jpg' },
+    { id: 'attr-salaeng', name_th: 'วัดสะแล่ง', name_en: 'Wat Salaeng', region: 'Long',
+      latitude: 18.09417, longitude: 99.83278,
+      description: 'วัดยุคกลาง พิพิธภัณฑ์โบราณวัตถุตั้งแต่สมัยทวารวดีถึงอยุธยาตอนปลาย',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%AA%E0%B8%B0%E0%B9%81%E0%B8%A5%E0%B9%88%E0%B8%87.jpg/330px-%E0%B8%A7%E0%B8%B1%E0%B8%94%E0%B8%AA%E0%B8%B0%E0%B9%81%E0%B8%A5%E0%B9%88%E0%B8%87.jpg' },
+    { id: 'attr-phanangkhoi', name_th: 'ถ้ำผานางคอย', name_en: 'Pha Nang Khoi Cave', region: 'Rong Kwang',
+      latitude: 18.36972, longitude: 100.35389,
+      description: 'ถ้ำหินงอกหินย้อย ตำนานหญิงสาวรอคอยคนรักที่ไม่กลับมา',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2019/09/1-DEW_5998-800x533.jpg' },
+    { id: 'attr-poochae', name_th: 'วัดพระธาตุปูแจ', name_en: 'Wat Phra That Poo Chae', region: 'Rong Kwang',
+      latitude: 18.20361, longitude: 100.29278,
+      description: 'วัดบนเนินเขาชมวิวภูเขา พระพุทธรูปสีขาวองค์ใหญ่มองเห็นจากทางหลวง',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B8%98%E0%B8%B2%E0%B8%95%E0%B8%B8%E0%B8%9B%E0%B8%B9%E0%B9%81%E0%B8%88.jpg/320px-%E0%B8%9E%E0%B8%A3%E0%B8%B0%E0%B8%98%E0%B8%B2%E0%B8%95%E0%B8%B8%E0%B8%9B%E0%B8%B9%E0%B9%81%E0%B8%88.jpg' },
+    { id: 'attr-doikok', name_th: 'พระธาตุดอยก๊อ', name_en: 'Phra That Doi Kok', region: 'Wang Chin',
+      latitude: 17.9000, longitude: 99.6033,
+      description: 'พระธาตุบนยอดดอยชมทะเลหมอกหน้าหนาว มองเห็นแม่น้ำยม',
+      image_url: 'https://www.paiduaykan.com/wp-content/uploads/2019/09/1-DEW_5998-800x533.jpg' }
+];
+
+// Active overlay layers — controls which datasets show up in the bottom feed
+// and the map. `problems` is the existing report layer (default on).
+var ACTIVE_LAYERS = { problems: true, attractions: false };
+var LAYER_COLORS = { attractions: '#ffb84d' }; // amber so it stays distinct from category palette
+
+function attractionsAsFeedItems() {
+    return ATTRACTIONS.map(function(a) {
+        return {
+            __layer: 'attractions',
+            report_id: a.id,
+            ticket_number: a.region.toUpperCase(),
+            problem_type: a.name_th,
+            description: a.description || a.name_en,
+            latitude: a.latitude,
+            longitude: a.longitude,
+            image_url: a.image_url,
+            status: 'attraction',
+            urgency: '',
+            timestamp: null
+        };
+    });
+}
+
 // ─── AUTH HELPER ───
 // Dashboard write operations require an API key (set DASHBOARD_API_KEY on server)
 function getApiKey() {
@@ -1759,9 +2048,8 @@ function authHeaders(extra) {
     if (extra) Object.assign(h, extra);
     return h;
 }
-const PHUKET_CENTER = [7.8804, 98.3923];
-const DEFAULT_CENTER = [13.75, 100.5];
-const DEFAULT_ZOOM = 6;
+const DEFAULT_CENTER = [18.14, 100.10];
+const DEFAULT_ZOOM = 10;
 const SLA_HOURS = 48;
 const CACHE_TTL = 60000;
 const REFRESH_INTERVALS = {
@@ -2280,6 +2568,7 @@ async function fetchData() {
         window.allReports = allReports;
 
         render();
+        if (typeof syncLayerCards === 'function') syncLayerCards();
         document.getElementById('loading-overlay').classList.add('hidden');
         document.getElementById('btn-briefing').disabled = false;
     } catch (err) {
@@ -2457,51 +2746,90 @@ function renderMarkers() {
     var zoom = map.getZoom();
     var showThumbs = zoom >= 15;
 
-    filteredReports.forEach(function(r) {
-        if (!r.latitude || !r.longitude) return;
+    if (ACTIVE_LAYERS.problems) {
+        filteredReports.forEach(function(r) {
+            if (!r.latitude || !r.longitude) return;
 
-        var catColor = CATEGORY_COLORS[r.problem_type] || '#999';
-        var isUrgent = r.urgency === 'สูง' && r.status !== 'completed';
-        var isCompleted = r.status === 'completed';
-        var marker;
+            var catColor = CATEGORY_COLORS[r.problem_type] || '#999';
+            var isUrgent = r.urgency === 'สูง' && r.status !== 'completed';
+            var isCompleted = r.status === 'completed';
+            var marker;
 
-        if (showThumbs && r.image_url) {
-            var icon = L.divIcon({
-                className: '',
-                html: '<img src="' + r.image_url + '" class="bauhaus-marker-thumb" style="border-color:' + catColor + '" onerror="this.style.display=\'none\'"/>',
-                iconSize: [56, 56],
-                iconAnchor: [28, 28]
-            });
-            marker = L.marker([r.latitude, r.longitude], { icon: icon, pane: 'markerPane' });
-        } else {
-            var size = zoom >= 15 ? 14 : zoom >= 10 ? 10 : 8;
-            var urgentClass = isUrgent ? ' bauhaus-marker--urgent' : '';
-            var completedClass = isCompleted ? ' bauhaus-marker--completed' : '';
-            var borderColor = isCompleted ? '#06D6A0' : '#fff';
-            var divIcon = L.divIcon({
-                className: '',
-                html: '<div class="bauhaus-marker' + urgentClass + completedClass + '" style="width:' + size + 'px;height:' + size + 'px;background:' + catColor + ';border-color:' + borderColor + '"></div>',
-                iconSize: [size, size],
-                iconAnchor: [size/2, size/2]
-            });
-            marker = L.marker([r.latitude, r.longitude], { icon: divIcon, pane: 'markerPane' });
-        }
+            if (showThumbs && r.image_url) {
+                var icon = L.divIcon({
+                    className: '',
+                    html: '<img src="' + toEmbeddableImageUrl(r.image_url) + '" class="bauhaus-marker-thumb" style="border-color:' + catColor + '" onerror="this.style.display=\'none\'"/>',
+                    iconSize: [56, 56],
+                    iconAnchor: [28, 28]
+                });
+                marker = L.marker([r.latitude, r.longitude], { icon: icon, pane: 'markerPane' });
+            } else {
+                var size = zoom >= 15 ? 14 : zoom >= 10 ? 10 : 8;
+                var urgentClass = isUrgent ? ' bauhaus-marker--urgent' : '';
+                var completedClass = isCompleted ? ' bauhaus-marker--completed' : '';
+                var borderColor = isCompleted ? '#06D6A0' : '#fff';
+                var divIcon = L.divIcon({
+                    className: '',
+                    html: '<div class="bauhaus-marker' + urgentClass + completedClass + '" style="width:' + size + 'px;height:' + size + 'px;background:' + catColor + ';border-color:' + borderColor + '"></div>',
+                    iconSize: [size, size],
+                    iconAnchor: [size/2, size/2]
+                });
+                marker = L.marker([r.latitude, r.longitude], { icon: divIcon, pane: 'markerPane' });
+            }
 
-        marker.bindPopup(
-            '<div style="min-width:180px">' +
-            '<div style="font-family:\'Space Mono\',monospace;font-weight:700;font-size:13px;margin-bottom:4px;">#' + (r.ticket_number || '—') + '</div>' +
-            '<div style="font-size:10px;color:#999;margin-bottom:6px;">' + (r.problem_type || '—') + '</div>' +
-            '<div style="font-size:11px;line-height:1.5;">' + (r.ai_summary || r.description || '—') + '</div>' +
-            (r.location_text ? '<div style="font-size:9px;color:#666;margin-top:6px;">' + r.location_text + '</div>' : '') +
-            '</div>'
-        );
+            marker.bindPopup(
+                '<div style="min-width:180px">' +
+                '<div style="font-family:\'Space Mono\',monospace;font-weight:700;font-size:13px;margin-bottom:4px;">#' + (r.ticket_number || '—') + '</div>' +
+                '<div style="font-size:10px;color:#999;margin-bottom:6px;">' + (r.problem_type || '—') + '</div>' +
+                '<div style="font-size:11px;line-height:1.5;">' + (r.ai_summary || r.description || '—') + '</div>' +
+                (r.location_text ? '<div style="font-size:9px;color:#666;margin-top:6px;">' + r.location_text + '</div>' : '') +
+                '</div>'
+            );
 
-        (function(report) {
-            marker.on('click', function() { openDetail(report); });
-        })(r);
+            (function(report) {
+                marker.on('click', function() { openDetail(report); });
+            })(r);
 
-        markersLayer.addLayer(marker);
-    });
+            markersLayer.addLayer(marker);
+        });
+    }
+
+    if (ACTIVE_LAYERS.attractions) {
+        var attrColor = LAYER_COLORS.attractions;
+        ATTRACTIONS.forEach(function(a) {
+            var marker;
+            if (showThumbs && a.image_url) {
+                var icon = L.divIcon({
+                    className: '',
+                    html: '<img src="' + a.image_url + '" class="bauhaus-marker-thumb" style="border-color:' + attrColor + '" onerror="this.style.display=\'none\'"/>',
+                    iconSize: [56, 56],
+                    iconAnchor: [28, 28]
+                });
+                marker = L.marker([a.latitude, a.longitude], { icon: icon, pane: 'markerPane' });
+            } else {
+                var size = zoom >= 15 ? 14 : zoom >= 10 ? 10 : 8;
+                var divIcon = L.divIcon({
+                    className: '',
+                    html: '<div class="bauhaus-marker" style="width:' + size + 'px;height:' + size + 'px;background:' + attrColor + ';border-color:#fff"></div>',
+                    iconSize: [size, size],
+                    iconAnchor: [size/2, size/2]
+                });
+                marker = L.marker([a.latitude, a.longitude], { icon: divIcon, pane: 'markerPane' });
+            }
+
+            marker.bindPopup(
+                '<div style="min-width:220px;max-width:280px">' +
+                '<img src="' + a.image_url + '" style="width:100%;height:140px;object-fit:cover;margin-bottom:6px;border-radius:4px;" onerror="this.style.display=\'none\'"/>' +
+                '<div style="font-family:\'Space Mono\',monospace;font-weight:700;font-size:13px;color:#000;">' + a.name_en + '</div>' +
+                '<div style="font-size:12px;color:#333;margin-top:2px;">' + a.name_th + '</div>' +
+                (a.description ? '<div style="font-size:11px;color:#555;margin-top:4px;line-height:1.4;">' + a.description + '</div>' : '') +
+                '<div style="font-size:9px;color:#888;margin-top:6px;letter-spacing:0.12em;text-transform:uppercase;">📍 ' + a.region + '</div>' +
+                '</div>'
+            );
+
+            markersLayer.addLayer(marker);
+        });
+    }
 }
 
 // ─── HEATMAP ───
@@ -2725,15 +3053,43 @@ function updateLegend() {
 // ─── BOTTOM BAR FEED ───
 function renderFeed() {
     var feed = document.getElementById('report-feed');
-    document.getElementById('feed-count').textContent = filteredReports.length + ' signals';
 
-    if (!filteredReports.length) {
-        feed.innerHTML = '<div class="report-feed__empty">No reports match the current filter set.</div>';
+    var problemItems = ACTIVE_LAYERS.problems ? filteredReports : [];
+    var attractionItems = ACTIVE_LAYERS.attractions ? ATTRACTIONS : [];
+    var totalCount = problemItems.length + attractionItems.length;
+
+    document.getElementById('feed-count').textContent = totalCount + ' signals';
+
+    if (!totalCount) {
+        feed.innerHTML = '<div class="report-feed__empty">No layers selected. Toggle one on in OVERLAYS.</div>';
         return;
     }
 
     var html = '';
-    filteredReports.forEach(function(r) {
+
+    // Attractions first (they're a "featured" overlay; Problems is the main ops feed below)
+    attractionItems.forEach(function(a) {
+        var attrColor = LAYER_COLORS.attractions;
+        html += '<div class="report-card" onclick="flyToAttraction(\'' + a.id + '\')" data-id="' + a.id + '" data-layer="attractions">' +
+            '<div class="report-card__cat-bar" style="background:' + attrColor + '"></div>' +
+            '<div class="report-card__urgency-bar" style="background:transparent"></div>' +
+            '<img class="report-card__thumb" src="' + a.image_url + '" onerror="this.style.display=\'none\'" />' +
+            '<div class="report-card__body">' +
+            '<div class="report-card__head">' +
+            '<span class="report-card__ticket">' + a.region.toUpperCase() + '</span>' +
+            '<span class="report-card__status" style="background:' + attrColor + ';color:#0A0A0A">ATTRACTION</span>' +
+            '</div>' +
+            '<div class="report-card__category">' + a.name_th + '</div>' +
+            '<div class="report-card__desc">' + a.name_en + '</div>' +
+            '<div class="report-card__footer">' +
+            '<span class="report-card__location">' + a.latitude.toFixed(4) + ', ' + a.longitude.toFixed(4) + '</span>' +
+            '<span class="report-card__age">★</span>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+    });
+
+    problemItems.forEach(function(r) {
         var catColor = CATEGORY_COLORS[r.problem_type] || '#999';
         var statusInfo = STATUS_MAP[r.status] || STATUS_MAP.received;
         var age = r.status === 'completed' ? 'CLOSED' : Math.round((Date.now() - new Date(r.timestamp)) / 3600000) + 'h';
@@ -2742,7 +3098,7 @@ function renderFeed() {
         var ageClass = (isUrgent || (age !== 'CLOSED' && parseInt(age) > SLA_HOURS)) ? ' report-card__age--urgent' : '';
         var selectedClass = (selectedReport && selectedReport.report_id === r.report_id) ? ' selected' : '';
 
-        var thumb = r.image_url ? '<img class="report-card__thumb" src="' + r.image_url + '" onerror="this.style.display=\'none\'" />' : '';
+        var thumb = r.image_url ? '<img class="report-card__thumb" src="' + toEmbeddableImageUrl(r.image_url) + '" onerror="this.style.display=\'none\'" />' : '';
 
         html += '<div class="report-card' + selectedClass + '" onclick="openDetail(window.allReports.find(function(x){return x.report_id===\'' + r.report_id + '\'}))" data-id="' + r.report_id + '">' +
             '<div class="report-card__cat-bar" style="background:' + catColor + '"></div>' +
@@ -2766,6 +3122,22 @@ function renderFeed() {
     feed.innerHTML = html;
 }
 
+// Click an attraction card → recenter the map + open its popup
+window.flyToAttraction = function(id) {
+    var a = ATTRACTIONS.find(function(x) { return x.id === id; });
+    if (!a || !map) return;
+    map.flyTo([a.latitude, a.longitude], Math.max(map.getZoom(), 13), { duration: 0.6 });
+    // Find the matching marker and open its popup once we arrive
+    setTimeout(function() {
+        markersLayer.eachLayer(function(layer) {
+            var ll = layer.getLatLng && layer.getLatLng();
+            if (ll && Math.abs(ll.lat - a.latitude) < 1e-4 && Math.abs(ll.lng - a.longitude) < 1e-4) {
+                layer.openPopup();
+            }
+        });
+    }, 650);
+};
+
 // ─── DETAIL PANEL ───
 function openDetail(report) {
     if (!report) return;
@@ -2784,7 +3156,7 @@ function openDetail(report) {
     var bodyHtml = '';
 
     if (report.image_url) {
-        bodyHtml += '<img class="detail-img" src="' + report.image_url + '" onerror="this.style.display=\'none\'" />';
+        bodyHtml += '<img class="detail-img" src="' + toEmbeddableImageUrl(report.image_url) + '" onerror="this.style.display=\'none\'" />';
     }
 
     bodyHtml += '<div class="detail-section">' +
@@ -2901,8 +3273,8 @@ async function updateReportStatus() {
 // ─── WEATHER ───
 async function fetchWeather() {
     try {
-        var weatherRes = await fetch('https://api.open-meteo.com/v1/forecast?latitude=7.8804&longitude=98.3923&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m&hourly=precipitation_probability,precipitation,rain,wind_speed_10m,wind_gusts_10m&timezone=Asia%2FBangkok&forecast_days=1');
-        var marineRes = await fetch('https://marine-api.open-meteo.com/v1/marine?latitude=7.8804&longitude=98.3923&current=wave_height,wave_direction,wave_period,sea_surface_temperature&hourly=wave_height&timezone=Asia%2FBangkok&forecast_days=1');
+        var weatherRes = await fetch('https://api.open-meteo.com/v1/forecast?latitude=18.14&longitude=100.10&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m&hourly=precipitation_probability,precipitation,rain,wind_speed_10m,wind_gusts_10m&timezone=Asia%2FBangkok&forecast_days=1');
+        var marineRes = await fetch('https://marine-api.open-meteo.com/v1/marine?latitude=18.14&longitude=100.10&current=wave_height,wave_direction,wave_period,sea_surface_temperature&hourly=wave_height&timezone=Asia%2FBangkok&forecast_days=1');
 
         var weather = await weatherRes.json();
         var marine = await marineRes.json();
@@ -3039,11 +3411,56 @@ window.closeDetail = closeDetail;
 window.updateReportStatus = updateReportStatus;
 window.allReports = allReports;
 
+// ─── OVERLAY (right panel) wiring ───
+function syncLayerCards() {
+    ['problems', 'attractions'].forEach(function(layer) {
+        var el = document.getElementById('layer-' + layer);
+        if (!el) return;
+        el.classList.toggle('is-active', !!ACTIVE_LAYERS[layer]);
+    });
+    var pCount = document.getElementById('layer-problems-count');
+    var aCount = document.getElementById('layer-attractions-count');
+    if (pCount) pCount.textContent = (window.allReports || []).length;
+    if (aCount) aCount.textContent = ATTRACTIONS.length;
+}
+
+function setLayerState(layer, on) {
+    ACTIVE_LAYERS[layer] = !!on;
+    syncLayerCards();
+    if (typeof render === 'function') render();
+}
+
+function bindLayerControls() {
+    ['problems', 'attractions'].forEach(function(layer) {
+        var el = document.getElementById('layer-' + layer);
+        if (!el) return;
+        el.addEventListener('click', function() {
+            setLayerState(layer, !ACTIVE_LAYERS[layer]);
+        });
+    });
+    var showAll = document.getElementById('layer-show-all');
+    if (showAll) showAll.addEventListener('click', function() {
+        ACTIVE_LAYERS.problems = true;
+        ACTIVE_LAYERS.attractions = true;
+        syncLayerCards();
+        if (typeof render === 'function') render();
+    });
+    var clear = document.getElementById('layer-clear');
+    if (clear) clear.addEventListener('click', function() {
+        ACTIVE_LAYERS.problems = false;
+        ACTIVE_LAYERS.attractions = false;
+        syncLayerCards();
+        if (typeof render === 'function') render();
+    });
+    syncLayerCards();
+}
+
 function init() {
     initMap();
     syncLayerToggleBoxes();
     syncModeButtons();
     syncPresetButtons();
+    bindLayerControls();
     updateWatchSurfaces();
     applyWatchPreset(watchState.preset);
     fetchData();

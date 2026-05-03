@@ -4,10 +4,14 @@
  */
 
 const defaultPort = parseInt(process.env.PORT || '3000', 10);
-const renderExternalUrl = process.env.RENDER_EXTERNAL_URL
+// Public-facing URL the bot is reachable on. Set EXTERNAL_BASE_URL when running
+// behind a Cloudflare Tunnel (or any reverse proxy). Falls back to Render's
+// platform-provided vars for backward compat.
+const externalBaseUrl = process.env.EXTERNAL_BASE_URL
+    || process.env.RENDER_EXTERNAL_URL
     || (process.env.RENDER_EXTERNAL_HOSTNAME ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}` : '');
-const defaultCallbackUrl = renderExternalUrl
-    ? `${renderExternalUrl}/oauth2callback`
+const defaultCallbackUrl = externalBaseUrl
+    ? `${externalBaseUrl}/oauth2callback`
     : `http://localhost:${defaultPort}/oauth2callback`;
 
 // Validate required environment variables
@@ -31,7 +35,7 @@ export const config = {
     port: defaultPort,
     nodeEnv: process.env.NODE_ENV || 'development',
     isProduction: process.env.NODE_ENV === 'production',
-    externalBaseUrl: renderExternalUrl,
+    externalBaseUrl,
 
     // LINE
     line: {

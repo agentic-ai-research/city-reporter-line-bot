@@ -4,6 +4,7 @@ node_modules/
 credentials/
 *.log
 .DS_Store
+.oauth-refresh-token.txt
 
 # Debug and test files
 debug_*.js

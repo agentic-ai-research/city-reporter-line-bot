@@ -4,6 +4,7 @@
  */
 
 import 'dotenv/config';
+import fs from 'fs';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -40,6 +41,7 @@ import {
 // Middleware
 import { errorHandler, notFoundHandler, requestLogger, asyncHandler } from './middleware/errorHandler.js';
 import { requireApiKey } from './middleware/apiAuth.js';
+import { dashboardWriteLimiter, uploadLimiter } from './middleware/rateLimit.js';
 
 const log = loggers.api;
 
@@ -47,8 +49,8 @@ const log = loggers.api;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// DEBUG: Verify Address Persistence
-console.log("\n🏢 [CONFIG CHECK] Resources Message:\n", MESSAGES.resources, "\n");
+// Verify resources copy at boot (only in debug; contains addresses/phone numbers)
+loggers.api.debug('Resources message loaded', { length: MESSAGES.resources.length });
 
 // ============================================
 // PROCESS HANDLERS (STABILITY FIX)
@@ -134,13 +136,37 @@ app.get('/auth/google', (req, res) => {
 app.get('/oauth2callback', asyncHandler(async (req, res) => {
     const { code } = req.query;
     const { tokens } = await oauth2Client.getToken(code);
-    log.info('OAuth tokens received — check server logs');
-    // Token is logged server-side only; never sent to the browser
-    console.log('REFRESH_TOKEN:', tokens.refresh_token);
+    const refreshToken = tokens.refresh_token;
+
+    if (!refreshToken) {
+        log.warn('OAuth callback: Google did not return a refresh_token (already issued? re-consent required)');
+        return res.status(400).send(`
+            <h1>No refresh_token returned</h1>
+            <p>Google only issues a refresh_token on first consent. Revoke the app at
+            <a href="https://myaccount.google.com/permissions" rel="noreferrer">myaccount.google.com/permissions</a>
+            and try again.</p>
+        `);
+    }
+
+    // Write the full token to a gitignored file with mode 0600 so the operator
+    // can copy it into .env without it landing in shell history, scrollback,
+    // or process-supervisor logs (PM2/launchd/cloudflared).
+    const tokenPath = path.join(__dirname, '..', '.oauth-refresh-token.txt');
+    try {
+        fs.writeFileSync(tokenPath, `${refreshToken}\n`, { mode: 0o600 });
+        fs.chmodSync(tokenPath, 0o600);
+    } catch (err) {
+        log.error('Failed to persist refresh token to file', err);
+    }
+
+    const masked = `${refreshToken.slice(0, 8)}…${refreshToken.slice(-4)}`;
+    log.info('OAuth refresh token received', { masked, savedTo: tokenPath });
+
     res.send(`
         <h1>Authentication Successful!</h1>
-        <p>Your refresh token has been printed to the <strong>server console</strong>.</p>
-        <p>Copy it from there and add it to your environment variables.</p>
+        <p>Refresh token written to <code>.oauth-refresh-token.txt</code> on the server (mode 0600).</p>
+        <p>Copy its contents into <code>GOOGLE_REFRESH_TOKEN</code> in your <code>.env</code>, then delete the file.</p>
+        <p>Server console shows only a masked preview: <code>${masked}</code>.</p>
     `);
 }));
 
@@ -284,7 +310,7 @@ app.get(['/api/reports', '/api/v1/reports', '/api/v2/reports'], asyncHandler(asy
 }));
 
 // Upload endpoint
-app.post(['/api/upload', '/api/v1/upload', '/api/v2/upload'], upload.single('image'), requireApiKey, asyncHandler(async (req, res) => {
+app.post(['/api/upload', '/api/v1/upload', '/api/v2/upload'], uploadLimiter, upload.single('image'), requireApiKey, asyncHandler(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     const filename = `proof-${Date.now()}-${req.file.originalname.replace(/\s/g, '_')}`;
@@ -492,7 +518,7 @@ app.get(['/api/analytics/social', '/api/v1/analytics/social', '/api/v2/analytics
 }));
 
 // Intelligence Briefs
-app.post(['/api/intelligence/generate', '/api/v1/intelligence/generate', '/api/v2/intelligence/generate'], requireApiKey, asyncHandler(async (req, res) => {
+app.post(['/api/intelligence/generate', '/api/v1/intelligence/generate', '/api/v2/intelligence/generate'], dashboardWriteLimiter, requireApiKey, asyncHandler(async (req, res) => {
     const brief = await policyEngine.generateBrief();
     res.json(brief);
 }));
@@ -536,7 +562,7 @@ app.get('/api/v2/live/aqi', asyncHandler(async (req, res) => {
 }));
 
 // Update status endpoint
-app.post(['/api/reports/:id/status', '/api/v1/reports/:id/status', '/api/v2/reports/:id/status'], express.json(), requireApiKey, asyncHandler(async (req, res) => {
+app.post(['/api/reports/:id/status', '/api/v1/reports/:id/status', '/api/v2/reports/:id/status'], dashboardWriteLimiter, express.json(), requireApiKey, asyncHandler(async (req, res) => {
     const version = getVersion(req);
     const { id } = req.params;
     const { status, staffName, staffComment, teamName, internalNotes, solutionImageUrl } = req.body;
@@ -577,7 +603,7 @@ app.post(['/api/reports/:id/status', '/api/v1/reports/:id/status', '/api/v2/repo
 }));
 
 // Update category
-app.post(['/api/reports/:id/category', '/api/v1/reports/:id/category', '/api/v2/reports/:id/category'], express.json(), requireApiKey, asyncHandler(async (req, res) => {
+app.post(['/api/reports/:id/category', '/api/v1/reports/:id/category', '/api/v2/reports/:id/category'], dashboardWriteLimiter, express.json(), requireApiKey, asyncHandler(async (req, res) => {
     const version = getVersion(req);
     const { id } = req.params;
     const { category } = req.body;
@@ -590,7 +616,7 @@ app.post(['/api/reports/:id/category', '/api/v1/reports/:id/category', '/api/v2/
 }));
 
 // Toggle lock
-app.post(['/api/reports/:id/lock', '/api/v1/reports/:id/lock', '/api/v2/reports/:id/lock'], express.json(), requireApiKey, asyncHandler(async (req, res) => {
+app.post(['/api/reports/:id/lock', '/api/v1/reports/:id/lock', '/api/v2/reports/:id/lock'], dashboardWriteLimiter, express.json(), requireApiKey, asyncHandler(async (req, res) => {
     const version = getVersion(req);
     const { id } = req.params;
     const { locked } = req.body;
@@ -638,9 +664,15 @@ app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
     }
 
     const parsed = JSON.parse(req.body.toString());
-    console.log('📨 INCOMING WEBHOOK:', JSON.stringify(parsed, null, 2));
     const events = parsed.events;
     if (!events || events.length === 0) return res.status(200).send('OK');
+
+    // Structured event summary only — full payload (with userIds and message text)
+    // goes to debugLogger and is exposed via the protected /api/debug-center route.
+    log.debug('LINE webhook received', {
+        count: events.length,
+        types: events.map(e => e.type)
+    });
 
     // Log events
     events.forEach(ev => debugLogger.logEvent(ev));
