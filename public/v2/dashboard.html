@@ -1666,6 +1666,14 @@ body {
                 <div class="layer-toggle__box" id="tog-aqi"></div>
                 <span class="layer-toggle__label">AQI Stations</span>
             </div>
+            <div class="layer-toggle" data-layer="precipitation">
+                <div class="layer-toggle__box" id="tog-precipitation"></div>
+                <span class="layer-toggle__label">Precipitation</span>
+            </div>
+            <div class="layer-toggle" data-layer="boundaries">
+                <div class="layer-toggle__box" id="tog-boundaries"></div>
+                <span class="layer-toggle__label">Admin Boundaries</span>
+            </div>
         </div>
 
         <div class="panel-section">
@@ -2087,7 +2095,9 @@ const LAYER_LABELS = {
     heatmap: 'Category Heatmap',
     grid: 'Distance Grid',
     searoutes: 'Sea Routes',
-    aqi: 'AQI Stations'
+    aqi: 'AQI Stations',
+    precipitation: 'Precipitation',
+    boundaries: 'Admin Boundaries'
 };
 
 const WATCH_PRESETS = {
@@ -2127,12 +2137,17 @@ let sortMode = 'priority';
 let quickFilters = {};
 let layerState = {
     satellite: true, nasa: false, infrared: false, terrain: false,
-    heatmap: false, grid: false, searoutes: false, aqi: false
+    heatmap: false, grid: false, searoutes: false, aqi: false,
+    precipitation: false, boundaries: false
 };
 let contextLayers = {};
 let gridLayer = null;
 let seaRoutesLayer = null;
 let aqiLayer = null;
+let precipLayer = null;
+let boundaryLayer = null;
+let _provincesGeoJson = null;
+let _nationalGeoJson = null;
 let marinePorts = [];
 let watchState = {
     preset: 'civic',
@@ -2434,6 +2449,12 @@ function syncOverlayVisuals() {
     if (layerState.aqi) renderAQI();
     else if (aqiLayer) { map.removeLayer(aqiLayer); aqiLayer = null; }
 
+    if (layerState.precipitation) renderPrecipitation();
+    else if (precipLayer) { map.removeLayer(precipLayer); precipLayer = null; }
+
+    if (layerState.boundaries) renderBoundaries();
+    else if (boundaryLayer) { map.removeLayer(boundaryLayer); boundaryLayer = null; }
+
     updateLegend();
     updateWatchHud();
 }
@@ -2469,7 +2490,11 @@ function initMap() {
     map.createPane('nasaPane').style.zIndex = 210;
     map.createPane('terrainPane').style.zIndex = 220;
     map.createPane('infraredPane').style.zIndex = 225;
+    map.createPane('precipPane').style.zIndex = 230;
+    map.getPane('precipPane').style.pointerEvents = 'none';
     map.createPane('gridPane').style.zIndex = 240;
+    map.createPane('boundaryPane').style.zIndex = 250;
+    map.getPane('boundaryPane').style.pointerEvents = 'none';
     map.getPane('gridPane').style.pointerEvents = 'none';
     map.createPane('seaRoutePane').style.zIndex = 260;
     map.createPane('aqiPane').style.zIndex = 280;
@@ -2969,14 +2994,24 @@ function aqiColor(aqi) {
     if (aqi <= 100) return '#F0A500';
     if (aqi <= 150) return '#E76F51';
     if (aqi <= 200) return '#D62828';
-    return '#B5179E';
+    if (aqi <= 300) return '#B5179E';
+    return '#7B2D8B';
+}
+
+function aqiCategory(aqi) {
+    if (aqi <= 50) return 'Good';
+    if (aqi <= 100) return 'Moderate';
+    if (aqi <= 150) return 'Sensitive';
+    if (aqi <= 200) return 'Unhealthy';
+    if (aqi <= 300) return 'Very Unhealthy';
+    return 'Hazardous';
 }
 
 async function renderAQI() {
     if (aqiLayer) { map.removeLayer(aqiLayer); aqiLayer = null; }
 
     var bounds = map.getBounds();
-    var cols = 4, rows = 3;
+    var cols = 5, rows = 4;
     var latStep = (bounds.getNorth() - bounds.getSouth()) / rows;
     var lngStep = (bounds.getEast() - bounds.getWest()) / cols;
 
@@ -3006,15 +3041,85 @@ async function renderAQI() {
         var lat = r.value.lat, lng = r.value.lng, pm25 = r.value.pm25;
         var aqi = pm25ToAqi(pm25);
         var color = aqiColor(aqi);
-        var radius = Math.max(7, Math.min(16, aqi / 8));
+        var category = aqiCategory(aqi);
 
-        aqiLayer.addLayer(L.circleMarker([lat, lng], {
-            radius: radius, color: color, fillColor: color, fillOpacity: 0.6,
-            weight: 1, pane: 'aqiPane'
-        }).bindTooltip('AQI: ' + aqi + ' (PM2.5: ' + pm25.toFixed(1) + ')', { sticky: true }));
+        var icon = L.divIcon({
+            className: '',
+            iconSize: [44, 44],
+            iconAnchor: [22, 22],
+            html: '<div style="' +
+                'background:' + color + ';' +
+                'color:#fff;' +
+                'font-family:\'Space Mono\',monospace;' +
+                'font-size:11px;' +
+                'font-weight:700;' +
+                'width:40px;height:40px;' +
+                'border-radius:50%;' +
+                'display:flex;align-items:center;justify-content:center;' +
+                'border:2px solid rgba(255,255,255,0.6);' +
+                'box-shadow:0 2px 6px rgba(0,0,0,0.5);' +
+                'text-align:center;line-height:1;' +
+                '">' + aqi + '</div>'
+        });
+
+        aqiLayer.addLayer(
+            L.marker([lat, lng], { icon: icon, pane: 'aqiPane' })
+             .bindTooltip('AQI ' + aqi + ' — ' + category + ' (PM2.5: ' + pm25.toFixed(1) + ')', { sticky: true })
+        );
     });
 
     aqiLayer.addTo(map);
+}
+
+async function renderPrecipitation() {
+    if (precipLayer) { map.removeLayer(precipLayer); precipLayer = null; }
+    try {
+        var res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+        if (!res.ok) throw new Error('RainViewer unavailable');
+        var data = await res.json();
+        var past = data && data.radar && data.radar.past;
+        if (!past || !past.length) throw new Error('No radar frames');
+        var latest = past[past.length - 1];
+        var tileUrl = 'https://tilecache.rainviewer.com' + latest.path + '256/{z}/{x}/{y}/4/1_1.png';
+        precipLayer = L.tileLayer(tileUrl, {
+            pane: 'precipPane',
+            opacity: 0.7,
+            attribution: 'RainViewer'
+        }).addTo(map);
+    } catch (e) {
+        console.warn('Precipitation layer error:', e);
+        setSourceStatus('weather', 'warn', 'Radar unavailable');
+    }
+}
+
+async function renderBoundaries() {
+    if (boundaryLayer) { map.removeLayer(boundaryLayer); boundaryLayer = null; }
+    boundaryLayer = L.layerGroup([], { pane: 'boundaryPane' }).addTo(map);
+
+    async function loadGeoJson(url, cache, style) {
+        if (!cache) {
+            var res = await fetch(url);
+            cache = await res.json();
+        }
+        L.geoJSON(cache, Object.assign({ pane: 'boundaryPane' }, style)).addTo(boundaryLayer);
+        return cache;
+    }
+
+    try {
+        _provincesGeoJson = await loadGeoJson(
+            'https://raw.githubusercontent.com/apisit/thailand.json/master/thailand.json',
+            _provincesGeoJson,
+            { color: 'rgba(255,255,255,0.4)', weight: 1, fill: false }
+        );
+    } catch(e) { console.warn('Thai provinces GeoJSON failed:', e); }
+
+    try {
+        _nationalGeoJson = await loadGeoJson(
+            'https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_110m_admin_0_boundary_lines_land.geojson',
+            _nationalGeoJson,
+            { color: 'rgba(255,255,255,0.7)', weight: 1.5, fill: false, dashArray: '4,3' }
+        );
+    } catch(e) { console.warn('National boundaries GeoJSON failed:', e); }
 }
 
 // ─── LEGEND ───
@@ -3042,9 +3147,25 @@ function updateLegend() {
 
     if (layerState.aqi) {
         html += '<div class="map-legend__item" style="margin-top:6px"><span class="map-legend__text" style="color:var(--text-3)">— AQI SCALE —</span></div>';
-        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#06D6A0"></div><span class="map-legend__text">Good (0-50)</span></div>';
-        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#F0A500"></div><span class="map-legend__text">Moderate (51-100)</span></div>';
-        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#D62828"></div><span class="map-legend__text">Unhealthy (101+)</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#06D6A0"></div><span class="map-legend__text">Good (0–50)</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#F0A500"></div><span class="map-legend__text">Moderate (51–100)</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#E76F51"></div><span class="map-legend__text">Sensitive (101–150)</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#D62828"></div><span class="map-legend__text">Unhealthy (151–200)</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#B5179E"></div><span class="map-legend__text">Very Unhealthy (201+)</span></div>';
+    }
+
+    if (layerState.precipitation) {
+        html += '<div class="map-legend__item" style="margin-top:6px"><span class="map-legend__text" style="color:var(--text-3)">— PRECIPITATION —</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#00D4FF"></div><span class="map-legend__text">Light rain</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#00A0FF"></div><span class="map-legend__text">Moderate</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#FF6600"></div><span class="map-legend__text">Heavy rain</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#FF0000"></div><span class="map-legend__text">Intense</span></div>';
+    }
+
+    if (layerState.boundaries) {
+        html += '<div class="map-legend__item" style="margin-top:6px"><span class="map-legend__text" style="color:var(--text-3)">— BOUNDARIES —</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:rgba(255,255,255,0.4)"></div><span class="map-legend__text">Thai provinces</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:rgba(255,255,255,0.7)"></div><span class="map-legend__text">National borders</span></div>';
     }
 
     legend.innerHTML = html;
