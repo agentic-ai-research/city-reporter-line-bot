@@ -1354,6 +1354,34 @@ body {
     opacity: 0.5;
 }
 
+/* ─── CLUSTER HOTSPOT MARKERS ─── */
+.cluster-pin {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+.cluster-pin__ring {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    opacity: 0;
+    animation: cluster-ripple 2.4s ease-out infinite;
+}
+.cluster-pin__ring--2 { inset: -12px; animation-delay: 0.8s; }
+.cluster-pin__ring--3 { inset: -18px; animation-delay: 1.6s; }
+@keyframes cluster-ripple {
+    0%   { transform: scale(0.7); opacity: 0.5; }
+    100% { transform: scale(1);   opacity: 0; }
+}
+
 .bauhaus-marker-thumb {
     width: 56px;
     height: 56px;
@@ -2463,6 +2491,7 @@ let aqiLayer = null;
 let precipLayer = null;
 let boundaryLayer = null;
 let smartCitiesLayer = null;
+let clusterLayer = null;
 let _provincesGeoJson = null; // shared cache: renderBoundaries + renderSmartCityPolygons
 let _nationalGeoJson = null;
 let marinePorts = [];
@@ -2818,6 +2847,7 @@ function initMap() {
     map.createPane('smartHighlightPane').style.zIndex = 222;
     map.getPane('smartHighlightPane').style.pointerEvents = 'none';
     map.createPane('heatPane').style.zIndex = 300;
+    map.createPane('clusterPane').style.zIndex = 390;
     map.createPane('markerPane').style.zIndex = 400;
 
     // Dark base (underneath satellite)
@@ -3084,6 +3114,109 @@ function populateFilterOptions() {
 }
 
 // ─── MAP MARKERS ───
+// ─── HOTSPOT CLUSTERING ───
+function haversineKm(lat1, lng1, lat2, lng2) {
+    var R = 6371, toRad = Math.PI / 180;
+    var dLat = (lat2 - lat1) * toRad;
+    var dLng = (lng2 - lng1) * toRad;
+    var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function buildHotspots(reports) {
+    var RADIUS_KM = 0.5;
+    var TIME_WINDOW_MS = 48 * 3600 * 1000;
+    var MIN_COUNT = 3;
+    var now = Date.now();
+
+    var recent = reports.filter(function(r) {
+        return r.latitude && r.longitude &&
+               r.status !== 'completed' &&
+               (now - new Date(r.timestamp).getTime()) < TIME_WINDOW_MS;
+    });
+
+    var clusters = [];
+    recent.forEach(function(r) {
+        var best = null, bestDist = Infinity;
+        clusters.forEach(function(c) {
+            var d = haversineKm(r.latitude, r.longitude, c.lat, c.lng);
+            if (d < RADIUS_KM && d < bestDist) { best = c; bestDist = d; }
+        });
+        if (best) {
+            best.reports.push(r);
+            best.lat = best.reports.reduce(function(s, x) { return s + x.latitude; }, 0) / best.reports.length;
+            best.lng = best.reports.reduce(function(s, x) { return s + x.longitude; }, 0) / best.reports.length;
+        } else {
+            clusters.push({ lat: r.latitude, lng: r.longitude, reports: [r] });
+        }
+    });
+
+    return clusters
+        .filter(function(c) { return c.reports.length >= MIN_COUNT; })
+        .map(function(c, i) {
+            var catCounts = {};
+            c.reports.forEach(function(r) {
+                catCounts[r.problem_type] = (catCounts[r.problem_type] || 0) + 1;
+            });
+            var dominantCat = Object.keys(catCounts).sort(function(a, b) {
+                return catCounts[b] - catCounts[a];
+            })[0];
+            var hasUrgent = c.reports.some(function(r) { return r.urgency === 'สูง'; });
+            var oldestTs = Math.min.apply(null, c.reports.map(function(r) {
+                return new Date(r.timestamp).getTime();
+            }));
+            return {
+                id: 'cluster-' + i,
+                lat: c.lat, lng: c.lng,
+                reports: c.reports,
+                count: c.reports.length,
+                hasUrgent: hasUrgent,
+                dominantCat: dominantCat || 'อื่นๆ',
+                dominantColor: hasUrgent ? '#D62828' : (CATEGORY_COLORS[dominantCat] || '#E76F51'),
+                oldestTs: oldestTs
+            };
+        })
+        .sort(function(a, b) { return b.count - a.count; });
+}
+
+function renderClusters(hotspots) {
+    if (clusterLayer) { map.removeLayer(clusterLayer); clusterLayer = null; }
+    if (!hotspots.length) return;
+
+    clusterLayer = L.layerGroup([], { pane: 'clusterPane' });
+
+    hotspots.forEach(function(h) {
+        var size = Math.min(20 + h.count * 5, 60);
+        var color = h.dominantColor;
+        var icon = L.divIcon({
+            className: '',
+            iconSize: [size + 36, size + 36],
+            iconAnchor: [(size + 36) / 2, (size + 36) / 2],
+            html: '<div class="cluster-pin" style="width:' + size + 'px;height:' + size + 'px;font-size:' + Math.max(10, size * 0.35) + 'px;background:' + color + ';color:' + color + '">' +
+                    '<span class="cluster-pin__ring"></span>' +
+                    '<span class="cluster-pin__ring cluster-pin__ring--2"></span>' +
+                    '<span class="cluster-pin__ring cluster-pin__ring--3"></span>' +
+                    '<span style="position:relative;z-index:1;color:#fff">' + h.count + '</span>' +
+                  '</div>'
+        });
+        var m = L.marker([h.lat, h.lng], { icon: icon, pane: 'clusterPane' });
+        m.bindTooltip(
+            '<strong>' + h.count + ' reports in 500m</strong><br>' +
+            (h.hasUrgent ? '⚠ Urgent reports included<br>' : '') +
+            h.dominantCat,
+            { sticky: true }
+        );
+        (function(cluster) {
+            m.on('click', function() { scrollFeedTo(cluster.id); });
+        })(h);
+        clusterLayer.addLayer(m);
+    });
+
+    clusterLayer.addTo(map);
+}
+
 function renderMarkers() {
     markersLayer.clearLayers();
 
@@ -3180,6 +3313,14 @@ function renderMarkers() {
 
             markersLayer.addLayer(marker);
         });
+    }
+
+    // Hotspot clusters — only when problems layer is on
+    if (ACTIVE_LAYERS.problems) {
+        renderClusters(buildHotspots(filteredReports));
+    } else if (clusterLayer) {
+        map.removeLayer(clusterLayer);
+        clusterLayer = null;
     }
 
     // Smart Cities: province polygon coverage — rendered by renderSmartCityPolygons()
@@ -3515,6 +3656,14 @@ function updateLegend() {
             '</div>';
     });
 
+    if (ACTIVE_LAYERS.problems) {
+        var hs = buildHotspots(filteredReports);
+        if (hs.length) {
+            html += '<div class="map-legend__item" style="margin-top:6px"><span class="map-legend__text" style="color:var(--text-3)">— HOTSPOTS (' + hs.length + ') —</span></div>';
+            html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#E76F51;border-radius:50%"></div><span class="map-legend__text">3+ reports / 500m / 48h</span></div>';
+        }
+    }
+
     if (layerState.searoutes) {
         html += '<div class="map-legend__item" style="margin-top:6px"><span class="map-legend__text" style="color:var(--text-3)">— SEA ROUTES —</span></div>';
         html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#2176FF"></div><span class="map-legend__text">Regional</span></div>';
@@ -3565,9 +3714,11 @@ function renderFeed() {
     var problemItems = ACTIVE_LAYERS.problems ? filteredReports : [];
     var attractionItems = ACTIVE_LAYERS.attractions ? ATTRACTIONS : [];
     var scItems = ACTIVE_LAYERS.smartcities ? SMART_CITIES : [];
+    var hotspots = ACTIVE_LAYERS.problems ? buildHotspots(filteredReports) : [];
     var totalCount = problemItems.length + attractionItems.length + scItems.length;
 
-    document.getElementById('feed-count').textContent = totalCount + ' signals';
+    document.getElementById('feed-count').textContent = totalCount + ' signals' +
+        (hotspots.length ? ' · ' + hotspots.length + ' hotspot' + (hotspots.length > 1 ? 's' : '') : '');
 
     if (!totalCount) {
         feed.innerHTML = '<div class="report-feed__empty">No layers selected. Toggle one on in OVERLAYS.</div>';
@@ -3576,7 +3727,30 @@ function renderFeed() {
 
     var html = '';
 
-    // Smart Cities first
+    // Hotspot cluster alerts — pinned at top
+    hotspots.forEach(function(h) {
+        var color = h.dominantColor;
+        var ageH = Math.round((Date.now() - h.oldestTs) / 3600000);
+        var ageLabel = ageH < 1 ? '<1h' : ageH + 'h';
+        html += '<div class="report-card" onclick="scrollFeedTo(\'' + h.id + '\')" data-id="' + h.id + '" style="border-left:3px solid ' + color + '">' +
+            '<div class="report-card__cat-bar" style="background:' + color + '"></div>' +
+            '<div class="report-card__urgency-bar" style="background:' + (h.hasUrgent ? 'var(--red)' : 'transparent') + '"></div>' +
+            '<div class="report-card__body">' +
+            '<div class="report-card__head">' +
+            '<span class="report-card__ticket" style="color:' + color + '">HOTSPOT</span>' +
+            '<span class="report-card__status" style="background:' + color + ';color:#fff">' + h.count + ' REPORTS</span>' +
+            '</div>' +
+            '<div class="report-card__category">' + h.dominantCat + (h.hasUrgent ? ' ⚠' : '') + '</div>' +
+            '<div class="report-card__desc">' + h.count + ' unresolved reports within 500m in the last 48h</div>' +
+            '<div class="report-card__footer">' +
+            '<span class="report-card__location">' + h.lat.toFixed(4) + ', ' + h.lng.toFixed(4) + '</span>' +
+            '<span class="report-card__age' + (h.hasUrgent ? ' report-card__age--urgent' : '') + '">' + ageLabel + '</span>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+    });
+
+    // Smart Cities
     scItems.forEach(function(city) {
         var color = SMART_CITY_TIERS[city.tier] || '#999';
         html += '<div class="report-card" onclick="scrollFeedTo(\'' + city.id + '\')" data-id="' + city.id + '" data-layer="smartcities">' +
