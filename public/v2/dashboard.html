@@ -2453,8 +2453,7 @@ let precipLayer = null;
 let boundaryLayer = null;
 let smartCitiesLayer = null;
 let smartHighlightLayer = null;
-let _scProvincesGeoJson = null;
-let _provincesGeoJson = null;
+let _provincesGeoJson = null; // shared cache: renderBoundaries + highlightSmartCity
 let _nationalGeoJson = null;
 let marinePorts = [];
 let watchState = {
@@ -3468,14 +3467,14 @@ async function renderBoundaries() {
 
 async function highlightSmartCity(city) {
     if (smartHighlightLayer) { map.removeLayer(smartHighlightLayer); smartHighlightLayer = null; }
-    if (!_scProvincesGeoJson) {
+    if (!_provincesGeoJson) {
         try {
             var res = await fetch('https://raw.githubusercontent.com/apisit/thailand.json/master/thailand.json');
-            _scProvincesGeoJson = await res.json();
+            _provincesGeoJson = await res.json();
         } catch(e) { console.warn('Smart city highlight GeoJSON failed:', e); return; }
     }
     var color = SMART_CITY_TIERS[city.tier] || '#999';
-    smartHighlightLayer = L.geoJSON(_scProvincesGeoJson, {
+    smartHighlightLayer = L.geoJSON(_provincesGeoJson, {
         pane: 'smartHighlightPane',
         filter: function(f) { return f.properties && f.properties.name === city.province_geojson; },
         style: { color: color, weight: 2, fillColor: color, fillOpacity: 0.18, opacity: 0.8 }
@@ -3938,12 +3937,20 @@ function closePdfReport() {
 }
 function buildPdfHtml() {
     var today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
-    var alphaCount = SMART_CITIES.filter(function(c) { return c.tier === 'Alpha'; }).length;
-    var betaCount  = SMART_CITIES.filter(function(c) { return c.tier === 'Beta'; }).length;
-    var gammaCount = SMART_CITIES.filter(function(c) { return c.tier === 'Gamma'; }).length;
+    var tierCounts = {};
+    SMART_CITIES.forEach(function(c) { tierCounts[c.tier] = (tierCounts[c.tier] || 0) + 1; });
+    var alphaCount = tierCounts.Alpha || 0;
+    var betaCount  = tierCounts.Beta  || 0;
+    var gammaCount = tierCounts.Gamma || 0;
+    // Build tier CSS from the single source of truth: SMART_CITY_TIERS
+    var tierCss = Object.keys(SMART_CITY_TIERS).map(function(tier) {
+        var bg = SMART_CITY_TIERS[tier];
+        var fg = (tier === 'Gamma') ? '#111' : '#fff'; // amber needs dark text
+        return '.tier-' + tier.toLowerCase() + '{background:' + bg + ';color:' + fg + ';}';
+    }).join(' ');
     var h = '';
     h += '<style>';
-    h += 'body{font-family:Georgia,serif;color:#111;line-height:1.6;} h1{font-size:28px;font-weight:700;margin-bottom:4px;} h2{font-size:18px;font-weight:700;margin:32px 0 8px;border-bottom:2px solid #111;padding-bottom:4px;} h3{font-size:14px;font-weight:700;margin:20px 0 6px;} p,li{font-size:13px;margin-bottom:8px;} table{border-collapse:collapse;width:100%;margin:12px 0;font-size:12px;} th{background:#111;color:#fff;padding:6px 10px;text-align:left;} td{padding:6px 10px;border-bottom:1px solid #ddd;} pre{background:#f5f5f5;padding:16px;font-family:monospace;font-size:11px;line-height:1.7;white-space:pre;overflow:auto;border-left:4px solid #111;} .cover{text-align:center;padding:60px 0 40px;border-bottom:3px solid #111;margin-bottom:40px;} .tag{display:inline-block;background:#111;color:#fff;font-family:monospace;font-size:10px;padding:3px 8px;border-radius:2px;margin:2px;letter-spacing:0.1em;} .tier-alpha{background:#00B4D8;} .tier-beta{background:#B5179E;} .tier-gamma{background:#F0A500;color:#111;}';
+    h += 'body{font-family:Georgia,serif;color:#111;line-height:1.6;} h1{font-size:28px;font-weight:700;margin-bottom:4px;} h2{font-size:18px;font-weight:700;margin:32px 0 8px;border-bottom:2px solid #111;padding-bottom:4px;} h3{font-size:14px;font-weight:700;margin:20px 0 6px;} p,li{font-size:13px;margin-bottom:8px;} table{border-collapse:collapse;width:100%;margin:12px 0;font-size:12px;} th{background:#111;color:#fff;padding:6px 10px;text-align:left;} td{padding:6px 10px;border-bottom:1px solid #ddd;} pre{background:#f5f5f5;padding:16px;font-family:monospace;font-size:11px;line-height:1.7;white-space:pre;overflow:auto;border-left:4px solid #111;} .cover{text-align:center;padding:60px 0 40px;border-bottom:3px solid #111;margin-bottom:40px;} .tag{display:inline-block;background:#111;color:#fff;font-family:monospace;font-size:10px;padding:3px 8px;border-radius:2px;margin:2px;letter-spacing:0.1em;} ' + tierCss;
     h += '</style>';
     // Cover
     h += '<div class="cover">';
@@ -4071,18 +4078,19 @@ window.openPdfReport = openPdfReport;
 window.closePdfReport = closePdfReport;
 
 // ─── OVERLAY (right panel) wiring ───
+var LAYER_COUNTS = {
+    problems:    function() { return (window.allReports || []).length; },
+    attractions: function() { return ATTRACTIONS.length; },
+    smartcities: function() { return SMART_CITIES.length; }
+};
 function syncLayerCards() {
     ['problems', 'attractions', 'smartcities'].forEach(function(layer) {
         var el = document.getElementById('layer-' + layer);
         if (!el) return;
         el.classList.toggle('is-active', !!ACTIVE_LAYERS[layer]);
+        var countEl = document.getElementById('layer-' + layer + '-count');
+        if (countEl && LAYER_COUNTS[layer]) countEl.textContent = LAYER_COUNTS[layer]();
     });
-    var pCount = document.getElementById('layer-problems-count');
-    var aCount = document.getElementById('layer-attractions-count');
-    var scCount = document.getElementById('layer-smartcities-count');
-    if (pCount) pCount.textContent = (window.allReports || []).length;
-    if (aCount) aCount.textContent = ATTRACTIONS.length;
-    if (scCount) scCount.textContent = SMART_CITIES.length;
 }
 
 function setLayerState(layer, on) {
@@ -4101,17 +4109,13 @@ function bindLayerControls() {
     });
     var showAll = document.getElementById('layer-show-all');
     if (showAll) showAll.addEventListener('click', function() {
-        ACTIVE_LAYERS.problems = true;
-        ACTIVE_LAYERS.attractions = true;
-        ACTIVE_LAYERS.smartcities = true;
+        Object.keys(ACTIVE_LAYERS).forEach(function(k) { ACTIVE_LAYERS[k] = true; });
         syncLayerCards();
         if (typeof render === 'function') render();
     });
     var clear = document.getElementById('layer-clear');
     if (clear) clear.addEventListener('click', function() {
-        ACTIVE_LAYERS.problems = false;
-        ACTIVE_LAYERS.attractions = false;
-        ACTIVE_LAYERS.smartcities = false;
+        Object.keys(ACTIVE_LAYERS).forEach(function(k) { ACTIVE_LAYERS[k] = false; });
         if (smartHighlightLayer) { map.removeLayer(smartHighlightLayer); smartHighlightLayer = null; }
         syncLayerCards();
         if (typeof render === 'function') render();
