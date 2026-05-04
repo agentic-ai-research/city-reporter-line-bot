@@ -635,6 +635,31 @@ body {
     color: var(--yellow);
 }
 
+/* Smart-city feed card accents */
+.report-card[data-layer="smartcities"] .report-card__ticket { color: var(--cyan); }
+
+/* PDF export button in top bar */
+.top-bar__pdf-btn {
+    padding: 5px 10px;
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    color: var(--text-2);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color 0.12s, color 0.12s;
+    white-space: nowrap;
+}
+.top-bar__pdf-btn:hover { border-color: var(--yellow); color: var(--yellow); }
+
+@media print {
+    .viewport, #pdf-overlay .pdf-controls { display: none !important; }
+    #pdf-overlay { display: block !important; position: static !important; overflow: visible !important; }
+}
+
 /* ─── MAP CONTAINER ─── */
 .map-area {
     grid-column: 2;
@@ -1559,6 +1584,9 @@ body {
         </div>
 
         <div class="top-bar__spacer"></div>
+        <div class="top-bar__segment">
+            <button class="top-bar__pdf-btn" onclick="openPdfReport()">&#128196; PDF</button>
+        </div>
         <div class="top-bar__clock" id="clock">00:00:00</div>
     </div>
 
@@ -1827,6 +1855,14 @@ body {
                     <span class="layer-card__meta">Tourist sites</span>
                 </div>
                 <span class="layer-card__count" id="layer-attractions-count">0</span>
+            </div>
+            <div class="layer-card" data-layer="smartcities" id="layer-smartcities">
+                <div class="layer-card__box"></div>
+                <div class="layer-card__body">
+                    <span class="layer-card__name">Smart Cities</span>
+                    <span class="layer-card__meta">DEPA certified</span>
+                </div>
+                <span class="layer-card__count" id="layer-smartcities-count">0</span>
             </div>
             <div class="layer-actions">
                 <button class="layer-action-btn" id="layer-show-all">Show all</button>
@@ -2130,9 +2166,166 @@ var ATTRACTIONS = [
       image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Koh_Lipe_island_coast.jpg/330px-Koh_Lipe_island_coast.jpg' }
 ];
 
+// ─── SMART CITIES DATA ───
+var SMART_CITY_TIERS = { Alpha: '#00B4D8', Beta: '#B5179E', Gamma: '#F0A500' };
+
+var SMART_CITIES = [
+    // Alpha tier — nationally recognised certified smart cities
+    { id: 'chiang-mai-old-town', name_th: 'เมืองเก่าเชียงใหม่', name_en: 'Chiang Mai Old Town', tier: 'Alpha',
+      province_en: 'Chiang Mai', province_geojson: 'Chiang Mai', latitude: 18.79, longitude: 98.98,
+      description: 'Heritage-led smart city weaving digital transport, tourism, and environmental management through the historic moated city.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Chiang_Mai_Gate_during_Lantern_Festival.jpg/320px-Chiang_Mai_Gate_during_Lantern_Festival.jpg' },
+    { id: 'cmu-smart-city', name_th: 'เมืองอัจฉริยะ มช.', name_en: 'CMU Smart City', tier: 'Alpha',
+      province_en: 'Chiang Mai', province_geojson: 'Chiang Mai', latitude: 18.80, longitude: 98.95,
+      description: 'Chiang Mai University campus smart city pioneer with IoT sensors, smart mobility, and green campus energy systems.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Chiang_Mai_University_gate.jpg/320px-Chiang_Mai_University_gate.jpg' },
+    { id: 'khon-kaen', name_th: 'ขอนแก่น', name_en: 'Khon Kaen', tier: 'Alpha',
+      province_en: 'Khon Kaen', province_geojson: 'Khon Kaen', latitude: 16.43, longitude: 102.83,
+      description: 'The "Silicon Valley of the Northeast" — a data-driven city with smart transit, hospital integration, and inclusive digital governance.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Khon_Kaen_Province.jpg/320px-Khon_Kaen_Province.jpg' },
+    { id: 'phuket', name_th: 'ภูเก็ต', name_en: 'Phuket', tier: 'Alpha',
+      province_en: 'Phuket', province_geojson: 'Phuket', latitude: 7.88, longitude: 98.39,
+      description: 'Island province leading Thailand\'s smart tourism tech, smart grid, and CCTV safety network for 14 million annual visitors.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Patong_Beach%2C_Phuket%2C_Thailand.jpg/320px-Patong_Beach%2C_Phuket%2C_Thailand.jpg' },
+    { id: 'wangchan-valley', name_th: 'วังจันทร์วัลเลย์', name_en: 'Wangchan Valley', tier: 'Alpha',
+      province_en: 'Rayong', province_geojson: 'Rayong', latitude: 12.88, longitude: 101.20,
+      description: 'Thailand\'s flagship EECi smart innovation district — a greenfield city for R&D, biotechnology, and digital industries in the EEC.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Rayong_Province_-_Thailand.jpg/320px-Rayong_Province_-_Thailand.jpg' },
+    { id: 'samyan', name_th: 'สามย่านสมาร์ทซิตี้', name_en: 'Samyan Smart District', tier: 'Alpha',
+      province_en: 'Bangkok', province_geojson: 'Bangkok Metropolis', latitude: 13.73, longitude: 100.53,
+      description: 'Bangkok\'s first certified smart district centred on Chulalongkorn University — smart mobility, green buildings, and open data.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Bangkok_Collage_2024.jpg/320px-Bangkok_Collage_2024.jpg' },
+    { id: 'hat-yai', name_th: 'หาดใหญ่', name_en: 'Hat Yai', tier: 'Alpha',
+      province_en: 'Songkhla', province_geojson: 'Songkhla', latitude: 7.00, longitude: 100.47,
+      description: 'Southern Thailand\'s commercial hub accelerating smart flood management, transport nodes, and cross-border digital trade.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Hat_Yai_city.jpg/320px-Hat_Yai_city.jpg' },
+    // Beta tier
+    { id: 'mae-moh', name_th: 'แม่เมาะ', name_en: 'Mae Moh', tier: 'Beta',
+      province_en: 'Lampang', province_geojson: 'Lampang', latitude: 18.31, longitude: 99.72,
+      description: 'Transforming from coal-power municipality to smart green city with renewable energy, air monitoring, and community health data.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Lampang_Province.jpg/320px-Lampang_Province.jpg' },
+    { id: 'nakhonsawan', name_th: 'นครสวรรค์', name_en: 'Nakhon Sawan', tier: 'Beta',
+      province_en: 'Nakhon Sawan', province_geojson: 'Nakhon Sawan', latitude: 15.70, longitude: 100.12,
+      description: 'Central Thailand river-junction city deploying smart traffic, flood sensors, and digital public services at the Ping-Nan confluence.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Nakhon_Sawan_Province_-_Thailand.jpg/320px-Nakhon_Sawan_Province_-_Thailand.jpg' },
+    { id: 'phra-ram-4', name_th: 'พระราม 4', name_en: 'Phra Ram 4 District', tier: 'Beta',
+      province_en: 'Bangkok', province_geojson: 'Bangkok Metropolis', latitude: 13.72, longitude: 100.54,
+      description: 'Bangkok smart corridor along Rama IV Road — energy-efficient buildings, pedestrian digital wayfinding, and real-time traffic.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Bangkok_Collage_2024.jpg/320px-Bangkok_Collage_2024.jpg' },
+    { id: 'klong-phadung', name_th: 'คลองผดุงกรุงเกษม', name_en: 'Klong Phadung', tier: 'Beta',
+      province_en: 'Bangkok', province_geojson: 'Bangkok Metropolis', latitude: 13.75, longitude: 100.50,
+      description: 'Historic Bangkok canal corridor reimagined as smart waterfront with IoT water-quality monitoring and heritage tourism.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Bangkok_Collage_2024.jpg/320px-Bangkok_Collage_2024.jpg' },
+    { id: 'makkasan', name_th: 'มักกะสัน', name_en: 'Makkasan', tier: 'Beta',
+      province_en: 'Bangkok', province_geojson: 'Bangkok Metropolis', latitude: 13.75, longitude: 100.56,
+      description: 'Planned smart city node at the State Railway Makkasan depot — transit-oriented development with digital public-space sensors.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Bangkok_Collage_2024.jpg/320px-Bangkok_Collage_2024.jpg' },
+    { id: 'chachoengsao', name_th: 'ฉะเชิงเทรา', name_en: 'Chachoengsao', tier: 'Beta',
+      province_en: 'Chachoengsao', province_geojson: 'Chachoengsao', latitude: 13.69, longitude: 101.07,
+      description: 'EEC-adjacent smart city using e-government, smart agriculture sensors, and digital logistics corridors toward the Gulf coast.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Chachoengsao_Province.jpg/320px-Chachoengsao_Province.jpg' },
+    { id: 'saensuk', name_th: 'แสนสุข', name_en: 'Saen Suk', tier: 'Beta',
+      province_en: 'Chon Buri', province_geojson: 'Chon Buri', latitude: 13.28, longitude: 100.92,
+      description: 'Seaside municipality of Bang Saen deploying smart beach safety, Wi-Fi tourism zones, and coastal waste-management systems.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Bang_Saen_Beach_02.jpg/320px-Bang_Saen_Beach_02.jpg' },
+    { id: 'yala', name_th: 'ยะลา', name_en: 'Yala', tier: 'Beta',
+      province_en: 'Yala', province_geojson: 'Yala', latitude: 6.54, longitude: 101.28,
+      description: 'Deep South city using smart governance, CCTV integration, and digital health services to strengthen community resilience.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Yala_Province.jpg/320px-Yala_Province.jpg' },
+    { id: 'rayong', name_th: 'ระยอง', name_en: 'Rayong', tier: 'Beta',
+      province_en: 'Rayong', province_geojson: 'Rayong', latitude: 12.68, longitude: 101.27,
+      description: 'EEC industrial city transitioning to smart environment management, digital factory monitoring, and clean-energy microgrids.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Rayong_Province_-_Thailand.jpg/320px-Rayong_Province_-_Thailand.jpg' },
+    { id: 'phitsanulok-muni', name_th: 'เทศบาลนครพิษณุโลก', name_en: 'Phitsanulok Municipality', tier: 'Beta',
+      province_en: 'Phitsanulok', province_geojson: 'Phitsanulok', latitude: 16.82, longitude: 100.26,
+      description: 'River-city municipality deploying smart flood alerts, CCTV urban safety, and digital citizen services for the upper-north gateway.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Phitsanulok_Province.jpg/320px-Phitsanulok_Province.jpg' },
+    { id: 'phitsanulok-nu', name_th: 'มหาวิทยาลัยนเรศวร', name_en: 'Naresuan University Smart City', tier: 'Beta',
+      province_en: 'Phitsanulok', province_geojson: 'Phitsanulok', latitude: 16.74, longitude: 100.20,
+      description: 'University campus rolling out smart energy management, autonomous campus transport, and student-life digital services.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Phitsanulok_Province.jpg/320px-Phitsanulok_Province.jpg' },
+    { id: 'chiang-rai', name_th: 'เชียงราย', name_en: 'Chiang Rai', tier: 'Beta',
+      province_en: 'Chiang Rai', province_geojson: 'Chiang Rai', latitude: 19.91, longitude: 99.83,
+      description: 'Golden Triangle province advancing smart agriculture, smart tourism, and cross-border digital trade with Myanmar and Laos.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Wat_Rong_Khun%2C_Chiang_Rai.jpg/320px-Wat_Rong_Khun%2C_Chiang_Rai.jpg' },
+    { id: 'nan', name_th: 'น่าน', name_en: 'Nan', tier: 'Beta',
+      province_en: 'Nan', province_geojson: 'Nan', latitude: 18.78, longitude: 100.77,
+      description: 'Secluded northern province leading smart conservation, eco-tourism digital platforms, and community forestry sensor networks.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Nan_Province.jpg/320px-Nan_Province.jpg' },
+    { id: 'korat', name_th: 'นครราชสีมา', name_en: 'Nakhon Ratchasima', tier: 'Beta',
+      province_en: 'Nakhon Ratchasima', province_geojson: 'Nakhon Ratchasima', latitude: 14.97, longitude: 102.10,
+      description: 'Gateway to the Northeast — Korat deploys smart traffic, digital public health, and city-wide IoT environment monitors.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Nakhon_Ratchasima_Province.jpg/320px-Nakhon_Ratchasima_Province.jpg' },
+    { id: 'ubon', name_th: 'อุบลราชธานี', name_en: 'Ubon Ratchathani', tier: 'Beta',
+      province_en: 'Ubon Ratchathani', province_geojson: 'Ubon Ratchathani', latitude: 15.25, longitude: 104.85,
+      description: 'Mekong River city deploying smart agriculture, digital cultural tourism, and cross-border e-commerce with Laos.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Ubon_Ratchathani_Province.jpg/320px-Ubon_Ratchathani_Province.jpg' },
+    { id: 'krabi', name_th: 'กระบี่', name_en: 'Krabi', tier: 'Beta',
+      province_en: 'Krabi', province_geojson: 'Krabi', latitude: 8.09, longitude: 98.91,
+      description: 'Andaman cliff-karst province building smart marine conservation monitoring, sustainable tourism platforms, and renewable energy grids.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Krabi_Province.jpg/320px-Krabi_Province.jpg' },
+    { id: 'phangnga', name_th: 'พังงา', name_en: 'Phang Nga', tier: 'Beta',
+      province_en: 'Phang Nga', province_geojson: 'Phang-nga', latitude: 8.45, longitude: 98.52,
+      description: 'Sea-kayaking province with Phang Nga Bay deploying smart coastal disaster warning, marine IoT, and eco-tourism apps.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Phangnga_Province.jpg/320px-Phangnga_Province.jpg' },
+    { id: 'satun', name_th: 'สตูล', name_en: 'Satun', tier: 'Beta',
+      province_en: 'Satun', province_geojson: 'Satun', latitude: 6.62, longitude: 100.07,
+      description: 'UNESCO Satun Geopark province advancing smart fisheries management, marine biodiversity monitoring, and halal digital trade.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Satun_Province.jpg/320px-Satun_Province.jpg' },
+    { id: 'samui', name_th: 'เกาะสมุย', name_en: 'Koh Samui', tier: 'Beta',
+      province_en: 'Surat Thani', province_geojson: 'Surat Thani', latitude: 9.51, longitude: 100.06,
+      description: 'Island municipality investing in smart water management, renewable energy microgrids, and digital tourist-safety platforms.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Ko_Samui_Nathon_Pier_area.jpg/320px-Ko_Samui_Nathon_Pier_area.jpg' },
+    { id: 'pattani', name_th: 'ปัตตานี', name_en: 'Pattani', tier: 'Beta',
+      province_en: 'Pattani', province_geojson: 'Pattani', latitude: 6.87, longitude: 101.25,
+      description: 'Historic deep-south port city advancing smart fisheries, e-governance, and community digital services on the Gulf of Thailand.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Pattani_Province.jpg/320px-Pattani_Province.jpg' },
+    { id: 'narathiwat', name_th: 'นราธิวาส', name_en: 'Narathiwat', tier: 'Beta',
+      province_en: 'Narathiwat', province_geojson: 'Narathiwat', latitude: 6.43, longitude: 101.82,
+      description: 'Border province deploying smart agriculture for rubber and tropical fruit, digital halal trade, and community health IoT networks.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Narathiwat_Province.jpg/320px-Narathiwat_Province.jpg' },
+    { id: 'lampang', name_th: 'ลำปาง', name_en: 'Lampang', tier: 'Beta',
+      province_en: 'Lampang', province_geojson: 'Lampang', latitude: 18.29, longitude: 99.49,
+      description: 'Ceramic-arts city and electricity hub advancing smart grid monitoring, cultural heritage digitization, and clean-transport corridors.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Lampang_Province.jpg/320px-Lampang_Province.jpg' },
+    { id: 'samut-prakan', name_th: 'สมุทรปราการ', name_en: 'Samut Prakan', tier: 'Beta',
+      province_en: 'Samut Prakan', province_geojson: 'Samut Prakan', latitude: 13.60, longitude: 100.60,
+      description: 'Bangkok\'s industrial eastern gateway deploying smart factory monitoring, BTS-linked transit data, and estuary flood sensors.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Samut_Prakan_Province.jpg/320px-Samut_Prakan_Province.jpg' },
+    { id: 'nakhon-si-thammarat', name_th: 'นครศรีธรรมราช', name_en: 'Nakhon Si Thammarat', tier: 'Beta',
+      province_en: 'Nakhon Si Thammarat', province_geojson: 'Nakhon Si Thammarat', latitude: 8.43, longitude: 99.96,
+      description: 'Ancient capital of southern Thailand modernising with smart agriculture, digital heritage tourism, and Gulf coast logistics.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Nakhon_Si_Thammarat_Province.jpg/320px-Nakhon_Si_Thammarat_Province.jpg' },
+    { id: 'sritrang', name_th: 'ศรีตรัง (ตรัง)', name_en: 'Sri Trang — Trang', tier: 'Beta',
+      province_en: 'Trang', province_geojson: 'Trang', latitude: 7.56, longitude: 99.61,
+      description: 'Southern rubber and tourism province pioneering smart agricultural IoT and eco-tourism digital platforms on the Andaman coast.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Trang_Province.jpg/320px-Trang_Province.jpg' },
+    // Gamma tier
+    { id: 'khao-khun-song', name_th: 'เขาคูนส้ม', name_en: 'Khao Khun Song', tier: 'Gamma',
+      province_en: 'Rayong', province_geojson: 'Rayong', latitude: 12.75, longitude: 101.30,
+      description: 'Industrial promotion zone in Rayong integrating smart logistics, EEC supply-chain tracking, and environmental air-quality sensors.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Rayong_Province_-_Thailand.jpg/320px-Rayong_Province_-_Thailand.jpg' },
+    { id: 'thep-paraj', name_th: 'มหาสารคาม', name_en: 'Maha Sarakham', tier: 'Gamma',
+      province_en: 'Maha Sarakham', province_geojson: 'Maha Sarakham', latitude: 16.18, longitude: 103.30,
+      description: 'Silk-weaving and education city launching smart agriculture digitization, university innovation hub, and regional data platform.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Maha_Sarakham_Province.jpg/320px-Maha_Sarakham_Province.jpg' },
+    { id: 'nikhom-phatthana', name_th: 'นิคมพัฒนา', name_en: 'Nikhom Phatthana', tier: 'Gamma',
+      province_en: 'Rayong', province_geojson: 'Rayong', latitude: 12.75, longitude: 101.15,
+      description: 'EEC industrial municipality piloting smart factory infrastructure, AI-driven logistics, and community environmental dashboards.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Rayong_Province_-_Thailand.jpg/320px-Rayong_Province_-_Thailand.jpg' },
+    { id: 'tai-yong', name_th: 'ชัยภูมิ', name_en: 'Chaiyaphum', tier: 'Gamma',
+      province_en: 'Chaiyaphum', province_geojson: 'Chaiyaphum', latitude: 15.81, longitude: 102.03,
+      description: 'Mountain-gateway province building smart agriculture IoT for maize and sugar cane, plus digital community health networks.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Chaiyaphum_Province.jpg/320px-Chaiyaphum_Province.jpg' },
+    { id: 'phuket-tinicon', name_th: 'ภูเก็ต ทินไอคอน', name_en: 'Phuket TInICON', tier: 'Gamma',
+      province_en: 'Phuket', province_geojson: 'Phuket', latitude: 7.85, longitude: 98.35,
+      description: 'Innovation campus zone in Phuket focused on smart tourism tech, startup incubation, and international digital health services.',
+      image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Patong_Beach%2C_Phuket%2C_Thailand.jpg/320px-Patong_Beach%2C_Phuket%2C_Thailand.jpg' }
+];
+
 // Active overlay layers — controls which datasets show up in the bottom feed
 // and the map. `problems` is the existing report layer (default on).
-var ACTIVE_LAYERS = { problems: true, attractions: false };
+var ACTIVE_LAYERS = { problems: true, attractions: false, smartcities: false };
 var LAYER_COLORS = { attractions: '#ffb84d' }; // amber so it stays distinct from category palette
 
 function attractionsAsFeedItems() {
@@ -2258,6 +2451,9 @@ let seaRoutesLayer = null;
 let aqiLayer = null;
 let precipLayer = null;
 let boundaryLayer = null;
+let smartCitiesLayer = null;
+let smartHighlightLayer = null;
+let _scProvincesGeoJson = null;
 let _provincesGeoJson = null;
 let _nationalGeoJson = null;
 let marinePorts = [];
@@ -2610,6 +2806,8 @@ function initMap() {
     map.getPane('gridPane').style.pointerEvents = 'none';
     map.createPane('seaRoutePane').style.zIndex = 260;
     map.createPane('aqiPane').style.zIndex = 280;
+    map.createPane('smartHighlightPane').style.zIndex = 222;
+    map.getPane('smartHighlightPane').style.pointerEvents = 'none';
     map.createPane('heatPane').style.zIndex = 300;
     map.createPane('markerPane').style.zIndex = 400;
 
@@ -2974,6 +3172,33 @@ function renderMarkers() {
             markersLayer.addLayer(marker);
         });
     }
+
+    if (ACTIVE_LAYERS.smartcities) {
+        if (!smartCitiesLayer) { smartCitiesLayer = L.layerGroup().addTo(map); }
+        else { smartCitiesLayer.clearLayers(); }
+        SMART_CITIES.forEach(function(city) {
+            var color = SMART_CITY_TIERS[city.tier] || '#999';
+            var icon = L.divIcon({
+                className: '',
+                iconSize: [38, 38],
+                iconAnchor: [19, 19],
+                html: '<div style="background:' + color + ';color:#0a0a0a;font-family:\'Space Mono\',monospace;font-size:8px;font-weight:700;width:34px;height:34px;border-radius:4px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.5);box-shadow:0 2px 8px rgba(0,0,0,0.6);text-align:center;line-height:1.1;padding:2px;transform:rotate(-2deg)">' + city.tier + '</div>'
+            });
+            var marker = L.marker([city.latitude, city.longitude], { icon: icon, pane: 'markerPane' });
+            marker.bindTooltip(city.name_en + ' — ' + city.tier + ' Smart City', { sticky: true });
+            (function(c) {
+                marker.on('click', function() {
+                    highlightSmartCity(c);
+                    scrollFeedTo(c.id);
+                });
+            })(city);
+            smartCitiesLayer.addLayer(marker);
+        });
+    } else if (smartCitiesLayer) {
+        map.removeLayer(smartCitiesLayer);
+        smartCitiesLayer = null;
+        if (smartHighlightLayer) { map.removeLayer(smartHighlightLayer); smartHighlightLayer = null; }
+    }
 }
 
 // ─── HEATMAP ───
@@ -3241,6 +3466,22 @@ async function renderBoundaries() {
     } catch(e) { console.warn('National boundaries GeoJSON failed:', e); }
 }
 
+async function highlightSmartCity(city) {
+    if (smartHighlightLayer) { map.removeLayer(smartHighlightLayer); smartHighlightLayer = null; }
+    if (!_scProvincesGeoJson) {
+        try {
+            var res = await fetch('https://raw.githubusercontent.com/apisit/thailand.json/master/thailand.json');
+            _scProvincesGeoJson = await res.json();
+        } catch(e) { console.warn('Smart city highlight GeoJSON failed:', e); return; }
+    }
+    var color = SMART_CITY_TIERS[city.tier] || '#999';
+    smartHighlightLayer = L.geoJSON(_scProvincesGeoJson, {
+        pane: 'smartHighlightPane',
+        filter: function(f) { return f.properties && f.properties.name === city.province_geojson; },
+        style: { color: color, weight: 2, fillColor: color, fillOpacity: 0.18, opacity: 0.8 }
+    }).addTo(map);
+}
+
 // ─── LEGEND ───
 function updateLegend() {
     var legend = document.getElementById('map-legend');
@@ -3287,6 +3528,13 @@ function updateLegend() {
         html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:rgba(255,255,255,0.7)"></div><span class="map-legend__text">National borders</span></div>';
     }
 
+    if (ACTIVE_LAYERS.smartcities) {
+        html += '<div class="map-legend__item" style="margin-top:6px"><span class="map-legend__text" style="color:var(--text-3)">— SMART CITIES —</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#00B4D8;border-radius:2px"></div><span class="map-legend__text">Alpha</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#B5179E;border-radius:2px"></div><span class="map-legend__text">Beta</span></div>';
+        html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#F0A500;border-radius:2px"></div><span class="map-legend__text">Gamma</span></div>';
+    }
+
     legend.innerHTML = html;
 }
 
@@ -3296,7 +3544,8 @@ function renderFeed() {
 
     var problemItems = ACTIVE_LAYERS.problems ? filteredReports : [];
     var attractionItems = ACTIVE_LAYERS.attractions ? ATTRACTIONS : [];
-    var totalCount = problemItems.length + attractionItems.length;
+    var scItems = ACTIVE_LAYERS.smartcities ? SMART_CITIES : [];
+    var totalCount = problemItems.length + attractionItems.length + scItems.length;
 
     document.getElementById('feed-count').textContent = totalCount + ' signals';
 
@@ -3307,7 +3556,29 @@ function renderFeed() {
 
     var html = '';
 
-    // Attractions first (they're a "featured" overlay; Problems is the main ops feed below)
+    // Smart Cities first
+    scItems.forEach(function(city) {
+        var color = SMART_CITY_TIERS[city.tier] || '#999';
+        html += '<div class="report-card" onclick="highlightSmartCity(SMART_CITIES.find(function(x){return x.id===\'' + city.id + '\'}))" data-id="' + city.id + '" data-layer="smartcities">' +
+            '<div class="report-card__cat-bar" style="background:' + color + '"></div>' +
+            '<div class="report-card__urgency-bar" style="background:transparent"></div>' +
+            '<img class="report-card__thumb" src="' + city.image_url + '" onerror="this.style.display=\'none\'" />' +
+            '<div class="report-card__body">' +
+            '<div class="report-card__head">' +
+            '<span class="report-card__ticket" style="color:' + color + '">' + city.province_en.toUpperCase() + '</span>' +
+            '<span class="report-card__status" style="background:' + color + ';color:#0A0A0A">' + city.tier + '</span>' +
+            '</div>' +
+            '<div class="report-card__category">' + city.name_th + '</div>' +
+            '<div class="report-card__desc">' + city.description + '</div>' +
+            '<div class="report-card__footer">' +
+            '<span class="report-card__location">' + city.name_en + '</span>' +
+            '<span class="report-card__age">SMART</span>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+    });
+
+    // Attractions (they're a "featured" overlay; Problems is the main ops feed below)
     attractionItems.forEach(function(a) {
         var attrColor = LAYER_COLORS.attractions;
         html += '<div class="report-card" onclick="flyToAttraction(\'' + a.id + '\')" data-id="' + a.id + '" data-layer="attractions">' +
@@ -3655,23 +3926,163 @@ document.querySelectorAll('.preset-btn').forEach(function(el) {
     });
 });
 
+// ─── PDF EXPORT ───
+function openPdfReport() {
+    document.getElementById('pdf-content').innerHTML = buildPdfHtml();
+    document.getElementById('pdf-overlay').style.display = 'block';
+    document.body.style.overflow = 'auto';
+}
+function closePdfReport() {
+    document.getElementById('pdf-overlay').style.display = 'none';
+    document.body.style.overflow = 'hidden';
+}
+function buildPdfHtml() {
+    var today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
+    var alphaCount = SMART_CITIES.filter(function(c) { return c.tier === 'Alpha'; }).length;
+    var betaCount  = SMART_CITIES.filter(function(c) { return c.tier === 'Beta'; }).length;
+    var gammaCount = SMART_CITIES.filter(function(c) { return c.tier === 'Gamma'; }).length;
+    var h = '';
+    h += '<style>';
+    h += 'body{font-family:Georgia,serif;color:#111;line-height:1.6;} h1{font-size:28px;font-weight:700;margin-bottom:4px;} h2{font-size:18px;font-weight:700;margin:32px 0 8px;border-bottom:2px solid #111;padding-bottom:4px;} h3{font-size:14px;font-weight:700;margin:20px 0 6px;} p,li{font-size:13px;margin-bottom:8px;} table{border-collapse:collapse;width:100%;margin:12px 0;font-size:12px;} th{background:#111;color:#fff;padding:6px 10px;text-align:left;} td{padding:6px 10px;border-bottom:1px solid #ddd;} pre{background:#f5f5f5;padding:16px;font-family:monospace;font-size:11px;line-height:1.7;white-space:pre;overflow:auto;border-left:4px solid #111;} .cover{text-align:center;padding:60px 0 40px;border-bottom:3px solid #111;margin-bottom:40px;} .tag{display:inline-block;background:#111;color:#fff;font-family:monospace;font-size:10px;padding:3px 8px;border-radius:2px;margin:2px;letter-spacing:0.1em;} .tier-alpha{background:#00B4D8;} .tier-beta{background:#B5179E;} .tier-gamma{background:#F0A500;color:#111;}';
+    h += '</style>';
+    // Cover
+    h += '<div class="cover">';
+    h += '<div style="font-family:monospace;font-size:11px;letter-spacing:0.2em;color:#888;margin-bottom:16px;">EDUCATIONAL REPORT</div>';
+    h += '<h1>SCTH V2 — Smart City<br>Command Center</h1>';
+    h += '<div style="font-size:14px;color:#555;margin-top:12px;">A citizen-reporting system and real-time dashboard<br>for smart city operations in Thailand</div>';
+    h += '<div style="margin-top:24px;font-size:12px;color:#888;">' + today + '</div>';
+    h += '</div>';
+    // What is this
+    h += '<h2>What Is This?</h2>';
+    h += '<p>This project is a two-part system: a <strong>city-reporting chatbot</strong> that lets citizens submit urban problems (broken roads, flooding, fallen trees) via LINE or Telegram, and a <strong>live command-center dashboard</strong> that displays those reports on a map alongside environmental data, tourist attractions, and smart city information.</p>';
+    h += '<p>Anyone with a smartphone can report a local problem in plain Thai. The system uses AI to classify the problem type and urgency, then stores it in a database that city staff can monitor from this dashboard.</p>';
+    // How it works
+    h += '<h2>How It Works</h2>';
+    h += '<pre>';
+    h += 'Citizen\n';
+    h += '  │  Sends message via LINE or Telegram\n';
+    h += '  │  (text + optional photo + location pin)\n';
+    h += '  ▼\n';
+    h += 'Bot Server  (Node.js / Express)\n';
+    h += '  │  Google Gemini 2.0 Flash — classifies problem type & urgency\n';
+    h += '  │  Google Maps Geocoding  — converts coordinates → address\n';
+    h += '  │  Google Drive           — stores photo attachments\n';
+    h += '  ▼\n';
+    h += 'Supabase Database  ←→  Google Sheets  (dual write)\n';
+    h += '  │\n';
+    h += '  │  REST API  (polling every 30 seconds)\n';
+    h += '  ▼\n';
+    h += 'This Dashboard  (live map + feed + analytics)\n';
+    h += '  │\n';
+    h += '  ├─ Real-time weather + marine conditions\n';
+    h += '  ├─ Air quality index (AQI) grid\n';
+    h += '  ├─ Precipitation radar tiles\n';
+    h += '  └─ Smart city tier overlays\n';
+    h += '</pre>';
+    // APIs
+    h += '<h2>APIs &amp; Data Sources</h2>';
+    h += '<table>';
+    h += '<tr><th>Service</th><th>What It Does</th><th>Cost</th></tr>';
+    h += '<tr><td>LINE Messaging API</td><td>Receives citizen reports via LINE chat</td><td>Free tier</td></tr>';
+    h += '<tr><td>Telegram Bot API</td><td>Receives reports via Telegram chat</td><td>Free</td></tr>';
+    h += '<tr><td>Google Gemini 2.0 Flash</td><td>AI classification of problem type, urgency, and Thai-language understanding</td><td>Free tier</td></tr>';
+    h += '<tr><td>Google Maps Geocoding</td><td>Converts GPS coordinates to human-readable addresses</td><td>Pay-per-use</td></tr>';
+    h += '<tr><td>Google Sheets API</td><td>Secondary data store and human-readable backup</td><td>Free</td></tr>';
+    h += '<tr><td>Google Drive API</td><td>Photo storage for citizen-submitted images</td><td>Free tier</td></tr>';
+    h += '<tr><td>Supabase (PostgreSQL)</td><td>Primary database with row-level security and REST API</td><td>Free tier</td></tr>';
+    h += '<tr><td>Open-Meteo</td><td>Weather forecasts and AQI / PM2.5 data — no API key required</td><td>Free</td></tr>';
+    h += '<tr><td>RainViewer</td><td>Real-time precipitation radar tiles</td><td>Free</td></tr>';
+    h += '<tr><td>OpenStreetMap / CartoDB</td><td>Dark base map tiles</td><td>Free</td></tr>';
+    h += '<tr><td>Esri World Imagery</td><td>Satellite map tiles</td><td>Free (non-commercial)</td></tr>';
+    h += '<tr><td>NASA GIBS</td><td>True-colour and infrared satellite imagery</td><td>Free</td></tr>';
+    h += '<tr><td>DEPA Smart City Registry</td><td>List of certified smart cities in Thailand</td><td>Open data</td></tr>';
+    h += '<tr><td>apisit/thailand.json</td><td>Thai provincial boundary GeoJSON for map highlights</td><td>Open source (MIT)</td></tr>';
+    h += '</table>';
+    // Dashboard features
+    h += '<h2>Dashboard Features</h2>';
+    h += '<h3>Map Layers (LAYERS panel)</h3>';
+    h += '<ul>';
+    h += '<li><strong>Satellite</strong> — Esri high-resolution satellite imagery</li>';
+    h += '<li><strong>NASA True Color</strong> — daily satellite composite from NASA GIBS</li>';
+    h += '<li><strong>IR Cloud</strong> — infrared cloud-top imagery for storm tracking</li>';
+    h += '<li><strong>Terrain</strong> — topographic shading showing hills and valleys</li>';
+    h += '<li><strong>Heatmap</strong> — density map of report clusters by category</li>';
+    h += '<li><strong>Distance Grid</strong> — 50 km grid overlay for spatial reference</li>';
+    h += '<li><strong>Sea Routes</strong> — regional, island, and offshore shipping lanes</li>';
+    h += '<li><strong>AQI Stations</strong> — real-time Air Quality Index badges across the region</li>';
+    h += '<li><strong>Precipitation</strong> — live RainViewer radar tiles showing rainfall intensity</li>';
+    h += '<li><strong>Admin Boundaries</strong> — Thai provincial and national border lines</li>';
+    h += '</ul>';
+    h += '<h3>Data Overlays (OVERLAYS panel)</h3>';
+    h += '<ul>';
+    h += '<li><strong>Problems</strong> — citizen reports from the LINE/Telegram bot, colour-coded by category and urgency</li>';
+    h += '<li><strong>Attractions</strong> — curated tourist and heritage sites with photos and descriptions</li>';
+    h += '<li><strong>Smart Cities</strong> — DEPA-certified smart cities with tier badges and province highlights (' + alphaCount + ' Alpha, ' + betaCount + ' Beta, ' + gammaCount + ' Gamma)</li>';
+    h += '</ul>';
+    h += '<h3>Watch Presets</h3>';
+    h += '<ul>';
+    h += '<li><strong>Civic Ops</strong> — problems + satellite, focused on active reports</li>';
+    h += '<li><strong>Weather Watch</strong> — precipitation + AQI + sea conditions</li>';
+    h += '<li><strong>Maritime</strong> — sea routes + marine weather overlay</li>';
+    h += '<li><strong>Air Quality</strong> — AQI badges + infrared cloud layer</li>';
+    h += '</ul>';
+    // Smart City Program
+    h += '<h2>Thailand\'s Smart City Program</h2>';
+    h += '<p>The Digital Economy Promotion Agency (<strong>DEPA</strong>) under the Ministry of Digital Economy and Society certifies cities under three tiers:</p>';
+    h += '<ul>';
+    h += '<li><span class="tag tier-alpha">ALPHA</span> — National or international benchmark cities with fully deployed smart systems and measurable outcomes across multiple dimensions.</li>';
+    h += '<li><span class="tag tier-beta">BETA</span> — Cities with approved smart city plans and active deployment of at least one smart-city dimension (mobility, environment, economy, governance, living, or people).</li>';
+    h += '<li><span class="tag tier-gamma">GAMMA</span> — Cities in the promotional zone that have committed to a smart city roadmap and are in early stages of implementation.</li>';
+    h += '</ul>';
+    h += '<p>Smart city dimensions include: Smart Environment, Smart Economy, Smart Mobility, Smart Energy, Smart Governance, Smart Living, and Smart People.</p>';
+    // Privacy & security
+    h += '<h2>Privacy &amp; Security</h2>';
+    h += '<ul>';
+    h += '<li>Row-Level Security (RLS) is enabled on all Supabase tables — no public write access without authentication</li>';
+    h += '<li>Dashboard write endpoints (status updates, AI analysis) require a server-side API key</li>';
+    h += '<li>Citizen reports store only message content, location, and photo URL — no personal identifiers</li>';
+    h += '<li>LINE user IDs are hashed; they are never exposed in the dashboard</li>';
+    h += '<li>All external API calls are rate-limited server-side to prevent abuse</li>';
+    h += '</ul>';
+    // Credits
+    h += '<h2>Project Credits</h2>';
+    h += '<ul>';
+    h += '<li>Built with <strong>Claude Code</strong> (Anthropic) as the primary development assistant</li>';
+    h += '<li>Smart city data sourced from <strong>depa.or.th</strong> and the <em>nonarkara/smart-city-thailand-index</em> open dataset</li>';
+    h += '<li>Map tiles: OpenStreetMap contributors, Esri, NASA Earthdata, CartoDB</li>';
+    h += '<li>Weather data: Open-Meteo (open source weather API)</li>';
+    h += '<li>Precipitation radar: RainViewer</li>';
+    h += '<li>Province boundaries: apisit/thailand.json (MIT licence)</li>';
+    h += '<li>Attraction images: Wikimedia Commons (CC licences)</li>';
+    h += '</ul>';
+    h += '<div style="margin-top:40px;padding-top:20px;border-top:1px solid #ccc;text-align:center;font-size:11px;color:#888;">SCTH V2 Smart City Command Center &nbsp;·&nbsp; ' + today + '</div>';
+    return h;
+}
+
 // ─── INIT ───
 window.openDetail = openDetail;
 window.closeDetail = closeDetail;
 window.updateReportStatus = updateReportStatus;
 window.allReports = allReports;
+window.SMART_CITIES = SMART_CITIES;
+window.SMART_CITY_TIERS = SMART_CITY_TIERS;
+window.highlightSmartCity = highlightSmartCity;
+window.openPdfReport = openPdfReport;
+window.closePdfReport = closePdfReport;
 
 // ─── OVERLAY (right panel) wiring ───
 function syncLayerCards() {
-    ['problems', 'attractions'].forEach(function(layer) {
+    ['problems', 'attractions', 'smartcities'].forEach(function(layer) {
         var el = document.getElementById('layer-' + layer);
         if (!el) return;
         el.classList.toggle('is-active', !!ACTIVE_LAYERS[layer]);
     });
     var pCount = document.getElementById('layer-problems-count');
     var aCount = document.getElementById('layer-attractions-count');
+    var scCount = document.getElementById('layer-smartcities-count');
     if (pCount) pCount.textContent = (window.allReports || []).length;
     if (aCount) aCount.textContent = ATTRACTIONS.length;
+    if (scCount) scCount.textContent = SMART_CITIES.length;
 }
 
 function setLayerState(layer, on) {
@@ -3681,7 +4092,7 @@ function setLayerState(layer, on) {
 }
 
 function bindLayerControls() {
-    ['problems', 'attractions'].forEach(function(layer) {
+    ['problems', 'attractions', 'smartcities'].forEach(function(layer) {
         var el = document.getElementById('layer-' + layer);
         if (!el) return;
         el.addEventListener('click', function() {
@@ -3692,6 +4103,7 @@ function bindLayerControls() {
     if (showAll) showAll.addEventListener('click', function() {
         ACTIVE_LAYERS.problems = true;
         ACTIVE_LAYERS.attractions = true;
+        ACTIVE_LAYERS.smartcities = true;
         syncLayerCards();
         if (typeof render === 'function') render();
     });
@@ -3699,6 +4111,8 @@ function bindLayerControls() {
     if (clear) clear.addEventListener('click', function() {
         ACTIVE_LAYERS.problems = false;
         ACTIVE_LAYERS.attractions = false;
+        ACTIVE_LAYERS.smartcities = false;
+        if (smartHighlightLayer) { map.removeLayer(smartHighlightLayer); smartHighlightLayer = null; }
         syncLayerCards();
         if (typeof render === 'function') render();
     });
@@ -3728,5 +4142,15 @@ init();
 
 })();
 </script>
+
+<!-- ═══ PDF EXPORT OVERLAY ═══ -->
+<div id="pdf-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#fff;color:#111;overflow:auto;padding:48px 40px 80px;">
+    <div id="pdf-content" style="max-width:800px;margin:0 auto;"></div>
+    <div class="pdf-controls" style="position:fixed;top:16px;right:16px;display:flex;gap:8px;">
+        <button onclick="window.print()" style="padding:8px 18px;background:#111;color:#fff;border:none;cursor:pointer;font-family:Georgia,serif;font-size:13px;">&#128196; Print / Save PDF</button>
+        <button onclick="closePdfReport()" style="padding:8px 18px;background:#eee;color:#111;border:none;cursor:pointer;font-family:Georgia,serif;font-size:13px;">&times; Close</button>
+    </div>
+</div>
+
 </body>
 </html>
