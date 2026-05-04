@@ -2168,6 +2168,17 @@ var ATTRACTIONS = [
 
 // ─── SMART CITIES DATA ───
 var SMART_CITY_TIERS = { Alpha: '#00B4D8', Beta: '#B5179E', Gamma: '#F0A500' };
+var TIER_RANK = { Alpha: 3, Beta: 2, Gamma: 1 };
+function buildProvinceTierMap() {
+    var ptm = {};
+    SMART_CITIES.forEach(function(city) {
+        var existing = ptm[city.province_geojson];
+        if (!existing || TIER_RANK[city.tier] > TIER_RANK[existing.tier]) {
+            ptm[city.province_geojson] = city;
+        }
+    });
+    return ptm;
+}
 
 var SMART_CITIES = [
     // Alpha tier — nationally recognised certified smart cities
@@ -2452,8 +2463,7 @@ let aqiLayer = null;
 let precipLayer = null;
 let boundaryLayer = null;
 let smartCitiesLayer = null;
-let smartHighlightLayer = null;
-let _provincesGeoJson = null; // shared cache: renderBoundaries + highlightSmartCity
+let _provincesGeoJson = null; // shared cache: renderBoundaries + renderSmartCityPolygons
 let _nationalGeoJson = null;
 let marinePorts = [];
 let watchState = {
@@ -3172,31 +3182,12 @@ function renderMarkers() {
         });
     }
 
-    if (ACTIVE_LAYERS.smartcities) {
-        if (!smartCitiesLayer) { smartCitiesLayer = L.layerGroup().addTo(map); }
-        else { smartCitiesLayer.clearLayers(); }
-        SMART_CITIES.forEach(function(city) {
-            var color = SMART_CITY_TIERS[city.tier] || '#999';
-            var icon = L.divIcon({
-                className: '',
-                iconSize: [38, 38],
-                iconAnchor: [19, 19],
-                html: '<div style="background:' + color + ';color:#0a0a0a;font-family:\'Space Mono\',monospace;font-size:8px;font-weight:700;width:34px;height:34px;border-radius:4px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.5);box-shadow:0 2px 8px rgba(0,0,0,0.6);text-align:center;line-height:1.1;padding:2px;transform:rotate(-2deg)">' + city.tier + '</div>'
-            });
-            var marker = L.marker([city.latitude, city.longitude], { icon: icon, pane: 'markerPane' });
-            marker.bindTooltip(city.name_en + ' — ' + city.tier + ' Smart City', { sticky: true });
-            (function(c) {
-                marker.on('click', function() {
-                    highlightSmartCity(c);
-                    scrollFeedTo(c.id);
-                });
-            })(city);
-            smartCitiesLayer.addLayer(marker);
-        });
-    } else if (smartCitiesLayer) {
+    // Smart Cities: province polygon coverage — rendered by renderSmartCityPolygons()
+    if (ACTIVE_LAYERS.smartcities && !smartCitiesLayer) {
+        renderSmartCityPolygons();
+    } else if (!ACTIVE_LAYERS.smartcities && smartCitiesLayer) {
         map.removeLayer(smartCitiesLayer);
         smartCitiesLayer = null;
-        if (smartHighlightLayer) { map.removeLayer(smartHighlightLayer); smartHighlightLayer = null; }
     }
 }
 
@@ -3388,19 +3379,19 @@ async function renderAQI() {
 
         var icon = L.divIcon({
             className: '',
-            iconSize: [44, 44],
-            iconAnchor: [22, 22],
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
             html: '<div style="' +
                 'background:' + color + ';' +
                 'color:#fff;' +
                 'font-family:\'Space Mono\',monospace;' +
-                'font-size:11px;' +
+                'font-size:9px;' +
                 'font-weight:700;' +
-                'width:40px;height:40px;' +
-                'border-radius:50%;' +
+                'width:24px;height:24px;' +
+                'border-radius:3px;' +
                 'display:flex;align-items:center;justify-content:center;' +
-                'border:2px solid rgba(255,255,255,0.6);' +
-                'box-shadow:0 2px 6px rgba(0,0,0,0.5);' +
+                'border:1.5px solid rgba(255,255,255,0.6);' +
+                'box-shadow:0 1px 4px rgba(0,0,0,0.5);' +
                 'text-align:center;line-height:1;' +
                 '">' + aqi + '</div>'
         });
@@ -3465,20 +3456,47 @@ async function renderBoundaries() {
     } catch(e) { console.warn('National boundaries GeoJSON failed:', e); }
 }
 
-async function highlightSmartCity(city) {
-    if (smartHighlightLayer) { map.removeLayer(smartHighlightLayer); smartHighlightLayer = null; }
+async function renderSmartCityPolygons() {
+    if (smartCitiesLayer) { map.removeLayer(smartCitiesLayer); smartCitiesLayer = null; }
+    if (!ACTIVE_LAYERS.smartcities) return;
+
     if (!_provincesGeoJson) {
         try {
             var res = await fetch('https://raw.githubusercontent.com/apisit/thailand.json/master/thailand.json');
             _provincesGeoJson = await res.json();
-        } catch(e) { console.warn('Smart city highlight GeoJSON failed:', e); return; }
+        } catch(e) { console.warn('Smart Cities GeoJSON failed:', e); return; }
     }
-    var color = SMART_CITY_TIERS[city.tier] || '#999';
-    smartHighlightLayer = L.geoJSON(_provincesGeoJson, {
+
+    var provinceTierMap = buildProvinceTierMap();
+
+    smartCitiesLayer = L.geoJSON(_provincesGeoJson, {
         pane: 'smartHighlightPane',
-        filter: function(f) { return f.properties && f.properties.name === city.province_geojson; },
-        style: { color: color, weight: 2, fillColor: color, fillOpacity: 0.18, opacity: 0.8 }
+        filter: function(f) { return f.properties && !!provinceTierMap[f.properties.name]; },
+        style: function(f) {
+            var city = provinceTierMap[f.properties.name];
+            var color = SMART_CITY_TIERS[city.tier] || '#999';
+            return { color: color, weight: 2, fillColor: color, fillOpacity: 0.28, opacity: 0.85 };
+        },
+        onEachFeature: function(f, layer) {
+            var city = provinceTierMap[f.properties.name];
+            if (!city) return;
+            var citiesInProvince = SMART_CITIES.filter(function(c) {
+                return c.province_geojson === f.properties.name;
+            });
+            var cityNames = citiesInProvince.map(function(c) { return c.name_en; }).join(', ');
+            layer.bindTooltip(
+                '<strong>' + f.properties.name + '</strong><br>' +
+                city.tier + ' Smart Province<br>' +
+                '<span style="opacity:0.8">' + cityNames + '</span>',
+                { sticky: true }
+            );
+            layer.on('click', function() {
+                scrollFeedTo(citiesInProvince[0].id);
+            });
+        }
     }).addTo(map);
+
+    updateLegend();
 }
 
 // ─── LEGEND ───
@@ -3528,7 +3546,10 @@ function updateLegend() {
     }
 
     if (ACTIVE_LAYERS.smartcities) {
-        html += '<div class="map-legend__item" style="margin-top:6px"><span class="map-legend__text" style="color:var(--text-3)">— SMART CITIES —</span></div>';
+        var ptm = buildProvinceTierMap();
+        var scCount = Object.keys(ptm).length;
+        var scPct = Math.round(scCount / 77 * 100);
+        html += '<div class="map-legend__item" style="margin-top:6px"><span class="map-legend__text" style="color:var(--text-3)">— SMART CITIES ' + scCount + '/77 (' + scPct + '%) —</span></div>';
         html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#00B4D8;border-radius:2px"></div><span class="map-legend__text">Alpha</span></div>';
         html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#B5179E;border-radius:2px"></div><span class="map-legend__text">Beta</span></div>';
         html += '<div class="map-legend__item"><div class="map-legend__dot" style="background:#F0A500;border-radius:2px"></div><span class="map-legend__text">Gamma</span></div>';
@@ -3558,7 +3579,7 @@ function renderFeed() {
     // Smart Cities first
     scItems.forEach(function(city) {
         var color = SMART_CITY_TIERS[city.tier] || '#999';
-        html += '<div class="report-card" onclick="highlightSmartCity(SMART_CITIES.find(function(x){return x.id===\'' + city.id + '\'}))" data-id="' + city.id + '" data-layer="smartcities">' +
+        html += '<div class="report-card" onclick="scrollFeedTo(\'' + city.id + '\')" data-id="' + city.id + '" data-layer="smartcities">' +
             '<div class="report-card__cat-bar" style="background:' + color + '"></div>' +
             '<div class="report-card__urgency-bar" style="background:transparent"></div>' +
             '<img class="report-card__thumb" src="' + city.image_url + '" onerror="this.style.display=\'none\'" />' +
@@ -4073,7 +4094,6 @@ window.updateReportStatus = updateReportStatus;
 window.allReports = allReports;
 window.SMART_CITIES = SMART_CITIES;
 window.SMART_CITY_TIERS = SMART_CITY_TIERS;
-window.highlightSmartCity = highlightSmartCity;
 window.openPdfReport = openPdfReport;
 window.closePdfReport = closePdfReport;
 
@@ -4081,7 +4101,7 @@ window.closePdfReport = closePdfReport;
 var LAYER_COUNTS = {
     problems:    function() { return (window.allReports || []).length; },
     attractions: function() { return ATTRACTIONS.length; },
-    smartcities: function() { return SMART_CITIES.length; }
+    smartcities: function() { return Object.keys(buildProvinceTierMap()).length; }
 };
 function syncLayerCards() {
     ['problems', 'attractions', 'smartcities'].forEach(function(layer) {
@@ -4116,7 +4136,7 @@ function bindLayerControls() {
     var clear = document.getElementById('layer-clear');
     if (clear) clear.addEventListener('click', function() {
         Object.keys(ACTIVE_LAYERS).forEach(function(k) { ACTIVE_LAYERS[k] = false; });
-        if (smartHighlightLayer) { map.removeLayer(smartHighlightLayer); smartHighlightLayer = null; }
+        if (smartCitiesLayer) { map.removeLayer(smartCitiesLayer); smartCitiesLayer = null; }
         syncLayerCards();
         if (typeof render === 'function') render();
     });
