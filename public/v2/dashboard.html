@@ -529,6 +529,28 @@ body {
 .btn-analysis:hover { opacity: 0.85; }
 .btn-analysis:disabled { opacity: 0.3; cursor: not-allowed; }
 
+/* ─── SHEETS LINK BUTTON ─── */
+.btn-sheets {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-family: 'Space Mono', monospace;
+    color: #34A853;
+    border: 1px solid #34A853;
+    background: transparent;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+.btn-sheets:hover { background: #34A853; color: #000; }
+.btn-sheets svg { flex-shrink: 0; }
+
 /* ─── RIGHT OVERLAY PANEL (data layer toggles) ─── */
 .right-panel {
     grid-column: 3;
@@ -1612,6 +1634,15 @@ body {
         </div>
 
         <div class="top-bar__spacer"></div>
+        <a class="btn-sheets"
+           href="https://docs.google.com/spreadsheets/d/1apeg77Iawe4MGroPWl5RXPRTz0hVPevCgpxQxaSOa7U/edit"
+           target="_blank" rel="noopener" title="Open raw data in Google Sheets">
+            <svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M12 2H4C2.9 2 2 2.9 2 4v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 1.5L16.5 9H11V3.5zM4 18V4h5v7h7v7H4z"/>
+                <path d="M6 12h8v1H6zm0 2h8v1H6zm0-4h4v1H6z"/>
+            </svg>
+            SHEETS
+        </a>
         <div class="top-bar__segment">
             <button class="top-bar__pdf-btn" onclick="openPdfReport()">&#128196; PDF</button>
         </div>
